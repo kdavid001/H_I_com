@@ -24,6 +24,7 @@ body {
     gap: 20px;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
+    justify-content: space-between;
 }
 
 .brand {
@@ -295,4 +296,141 @@ button:hover { transform: translateY(-2px); }
     body { flex-direction: column; }
     .sidebar { width: 100%; height: 40vh; }
     .chat-container { margin: 0; border-radius: 0; }
+}
+
+/* New User Footer Styling */
+.user-footer {
+    margin-top: auto; /* Pushes this section to the very bottom */
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.avatar {
+    background: #e0e0e0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.logout-btn {
+    text-decoration: none;
+    color: #d32f2f; /* Red color for logout */
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(211, 47, 47, 0.1); /* Light red background */
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    background: #d32f2f;
+    color: white;
+}
+
+/* Add to style.css */
+
+.file-list-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px; /* Scroll if too many files */
+    overflow-y: auto;
+}
+
+.file-item {
+    font-size: 13px;
+    color: #444;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.file-item .status {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status.pending { color: #f39c12; } /* Orange for waiting */
+.status.success { color: #27ae60; } /* Green for done */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Add to static/style.css */
+
+.file-item {
+    /* Existing styles... */
+    display: flex;
+    justify-content: space-between; /* Pushes actions to the right */
+    align-items: center;
+    padding: 10px;
+}
+
+.file-name {
+    font-size: 13px;
+    color: #444;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px; /* Prevents long names breaking layout */
+}
+
+.actions {
+    display: flex;
+    gap: 5px;
+}
+
+.actions button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 4px;
+    width: auto; /* Override global button width */
+}
+
+.actions button:hover {
+    background: rgba(0,0,0,0.05);
+    transform: scale(1.1);
+}
+
+/* Add to static/style.css */
+
+.file-name {
+    /* Existing styles... */
+    font-size: 13px;
+    color: #444;
+    text-decoration: none; /* Remove underline by default */
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.file-name:hover {
+    color: #667eea; /* Change color on hover */
+    text-decoration: underline; /* Add underline on hover */
 }

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Courses | EduMind AI</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f6f8; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px 40px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; flex: 1; width: 100%; box-sizing: border-box; }
+
+        h2 { color: #333; margin-bottom: 20px; }
+
+        /* Grid for Courses */
+        .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+
+        /* Course Card */
+        .course-card {
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
+            cursor: pointer; border: 1px solid #eee; display: flex; flex-direction: column; height: 150px; justify-content: space-between;
+            position: relative;
+        }
+        .course-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        .course-title { font-size: 18px; font-weight: bold; color: #333; }
+        .course-meta { font-size: 12px; color: #888; }
+
+        /* New Course Button (Card style) */
+        .new-card { border: 2px dashed #667eea; display: flex; align-items: center; justify-content: center; color: #667eea; font-weight: bold; background: rgba(102, 126, 234, 0.05); }
+        .new-card:hover { background: rgba(102, 126, 234, 0.1); }
+
+        /* Card Header & Actions */
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+
+        .card-actions {
+            display: flex; gap: 5px; opacity: 0.6; transition: opacity 0.2s;
+        }
+        .course-card:hover .card-actions { opacity: 1; }
+
+        .card-actions button {
+            width: 30px; height: 30px; padding: 0; background: transparent;
+            color: #666; font-size: 14px; border-radius: 50%; border: none; cursor: pointer;
+        }
+        .card-actions button:hover { background: rgba(0,0,0,0.1); color: #333; }
+        .card-actions .delete-btn:hover { background: #ffebee; color: #d32f2f; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; }
+
+        /* Footer */
+        .footer {
+            margin-top: auto; padding: 20px; text-align: center;
+            background: #f4f6f8; color: #666; font-size: 14px; border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🧠 EduMind Dashboard</h1>
+        <div>
+            <span>Welcome, {{ username }}</span> | <a href="/logout" style="color: white; margin-left: 10px;">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Your Courses</h2>
+
+        <div class="course-grid">
+            <div class="course-card new-card" onclick="openModal()">
+                + Create New Course
+            </div>
+
+            {% for course in courses %}
+            <div class="course-card" onclick="window.location.href='/study/{{ course.id }}'">
+                <div class="card-header">
+                    <div class="course-title" id="title-{{ course.id }}">{{ course.title }}</div>
+
+                    <div class="card-actions">
+                        <button onclick="event.stopPropagation(); renameCourse({{ course.id }}, '{{ course.title }}')" title="Rename">✏️</button>
+                        <button onclick="event.stopPropagation(); deleteCourse({{ course.id }})" title="Delete" class="delete-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="course-meta">Started: {{ course.created_at.strftime('%Y-%m-%d') }}</div>
+            </div>
+            {% endfor %}
+        </div> </div> <div class="modal" id="courseModal">
+        <div class="modal-content">
+            <h3>Name your Course</h3>
+            <form action="/create_course" method="POST">
+                <input type="text" name="title" placeholder="e.g. Calculus 101" required>
+                <button type="submit">Start Learning</button>
+            </form>
+            <button onclick="closeModal()" style="background: transparent; color: #666; margin-top: 10px;">Cancel</button>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Huawei ICT Competition - Innovation Track</p>
+    </footer>
+
+    <script>
+        // Modal Logic
+        function openModal() { document.getElementById('courseModal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('courseModal').style.display = 'none'; }
+
+        // Close modal if clicking outside
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('courseModal')) {
+                closeModal();
+            }
+        }
+
+        // Delete Logic
+        async function deleteCourse(id) {
+            if(!confirm("⚠️ Are you sure? This will delete ALL notes and chats inside this course.")) return;
+
+            try {
+                const response = await fetch(`/api/course/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Failed to delete course.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Connection error");
+            }
+        }
+
+        // Rename Logic
+        async function renameCourse(id, oldTitle) {
+            const newTitle = prompt("Enter new course name:", oldTitle);
+            if (!newTitle || newTitle === oldTitle) return;
+
+            try {
+                const response = await fetch(`/api/course/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_title: newTitle })
+                });
+
+                if (response.ok) {
+                    document.getElementById(`title-${id}`).innerText = newTitle;
+                } else {
+                    alert("Failed to rename.");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>

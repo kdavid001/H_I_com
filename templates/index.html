@@ -4,26 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduMind AI | Huawei ICT</title>
-    <link rel="stylesheet" href="static/styles.css">
-</head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
 <body>
-
+    <input type="hidden" id="currentCourseId" value="{{ course.id }}">
     <aside class="sidebar">
         <div class="brand">
-            <h1>🧠 EduMind AI</h1>
-            <span class="subtitle">Huawei ICT Innovation</span>
-
-            <button class="new-course-btn" onclick="resetCourse()">
-                <span>+</span> New Course
-            </button>
+    <a href="/" style="text-decoration:none;"><h1>🧠 EduMind AI</h1></a> <span class="subtitle">{{ course.title }}</span>
         </div>
 
-        <div class="upload-section">
-            <label for="fileInput" class="file-upload-btn">
-                📄 Upload PDF Material
-            </label>
-            <input type="file" id="fileInput" accept=".pdf">
+    <div class="upload-section">
+    <label for="fileInput" class="file-upload-btn">
+        <span>📄</span> Upload Study Materials
+    </label>
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+
+    <div id="uploadStatus" class="file-list-container">
         </div>
+</div>
+
+<div class="library-section" style="margin-top: 20px;">
+    <h3 style="font-size: 14px; color: #333; margin-bottom: 10px;">📚 Your Library</h3>
+    <ul id="fileList" style="list-style: none; padding: 0; font-size: 13px; color: #666;">
+        </ul>
+</div>
 
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('summary')">Summary</button>
@@ -62,6 +65,18 @@
                 <span style="color: #667eea; font-weight: 700;">12/18</span>
             </div>
         </div>
+        <div class="stats">
+        </div>
+
+    <div class="user-footer">
+        <div class="user-info">
+            <div class="avatar">👤</div>
+            <span class="username">{{ username }}</span>
+        </div>
+        <a href="/logout" class="logout-btn">
+            Sign Out
+        </a>
+    </div>
     </aside>
 
     <main class="chat-container">
@@ -88,6 +103,6 @@
         </footer>
     </main>
 
-    <script src="static/script.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}?v=2"></script>
 </body>
 </html>

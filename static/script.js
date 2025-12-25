@@ -1,126 +1,185 @@
-/* FILE: script.js */
+/* FILE: static/script.js */
 
-// --- 1. Tab Switching Logic ---
+// --- 1. Global Variables & Helpers ---
+// Helper to get the Course ID safely
+function getCourseId() {
+    const input = document.getElementById('currentCourseId');
+    return input ? input.value : null;
+}
+
+// --- 2. Tab Switching Logic ---
 function switchTab(tabName) {
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
 
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    // Show the specific tab content
     document.getElementById('tab-' + tabName).classList.add('active');
 
-    // Add active class to the clicked button (finding by text/onclick would be complex, so we use event target logic or simple index match)
-    // Simple approach: Find the button that calls this function with this tabName
+    // Highlight the correct button
     const buttons = document.querySelectorAll('.tab-btn');
     if(tabName === 'summary') buttons[0].classList.add('active');
     if(tabName === 'quiz') buttons[1].classList.add('active');
     if(tabName === 'stats') buttons[2].classList.add('active');
 }
 
-// --- 2. New Course / Reset Logic ---
-function resetCourse() {
-    if(confirm("Start a new course? This will clear current chat and stats.")) {
-        // Clear chat
-        document.getElementById("chatBox").innerHTML = `
-            <div class="message bot">
-                👋 New session started! Upload a PDF to begin.
-            </div>
-        `;
-        // Reset File Input
-        document.getElementById("fileInput").value = "";
-        document.querySelector('.file-upload-btn').textContent = "📄 Upload PDF Material";
-
-        // Reset Stats (Visual only for demo)
-        document.querySelector('.good').textContent = "0%";
-        document.querySelector('.progress-fill').style.width = "0%";
-
-        // Switch to Summary Tab
-        switchTab('summary');
-    }
-}
-
-// --- 3. Chat & API Logic ---
+// --- 3. Chat Logic ---
 async function sendMessage() {
+    const courseId = getCourseId();
+    if (!courseId) {
+        alert("Session Error: Missing Course ID");
+        return;
+    }
+
     let input = document.getElementById("userInput");
     let message = input.value.trim();
     if (!message) return;
 
     let chatBox = document.getElementById("chatBox");
 
-    // Append User Message
+    // 1. Show User Message
     chatBox.innerHTML += `<div class="message user">${message}</div>`;
     input.value = "";
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Simulate Typing
+    // 2. Show Typing Indicator
     let typingId = "typing-" + Date.now();
     chatBox.innerHTML += `<div class="message bot" id="${typingId}">Thinking...</div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
-        // CALL FLASK API (Make sure your app.py is running)
+        // 3. Send to Backend
         let response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({
+                message: message,
+                course_id: courseId // <--- CRITICAL: Send ID
+            })
         });
         let data = await response.json();
 
-        // Remove Typing Indicator
+        // 4. Show Bot Response
         document.getElementById(typingId).remove();
-
-        // Append Bot Response
         chatBox.innerHTML += `<div class="message bot">${data.response}</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
 
     } catch (error) {
-        document.getElementById(typingId).remove();
-        chatBox.innerHTML += `<div class="message bot">⚠️ Demo Mode: Backend not connected. <br> You said: "${message}"</div>`;
+        if(document.getElementById(typingId)) document.getElementById(typingId).remove();
+        chatBox.innerHTML += `<div class="message bot">⚠️ Error: Could not reach server.</div>`;
         console.error("Error:", error);
     }
 }
 
-// --- 4. File Upload Logic ---
-document.getElementById('fileInput').addEventListener('change', function(e) {
-    const label = document.querySelector('.file-upload-btn');
-    if (e.target.files.length > 0) {
-        const fileName = e.target.files[0].name;
-        label.textContent = '✓ ' + fileName;
-        label.style.background = '#4caf50'; // Green to show success
+// --- 4. File Upload Logic (Merged & Fixed) ---
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+    const files = e.target.files;
+    const listContainer = document.getElementById('uploadStatus');
 
-        // Auto-switch to Summary Tab to show "Processing"
-        switchTab('summary');
-        document.querySelector('.placeholder-text').textContent = `Processing "${fileName}" via MindSpore...`;
+    if (files.length === 0) return;
+
+    // A. Visual Feedback (Show "Pending" status)
+    const filesToUpload = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Create visual item
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        const uniqueId = 'file-' + Date.now() + '-' + i;
+        fileItem.id = uniqueId;
+
+        fileItem.innerHTML = `<span>📄 ${file.name}</span> <span class="status pending">⏳</span>`;
+        listContainer.appendChild(fileItem);
+
+        filesToUpload.push({ file: file, uiId: uniqueId });
     }
+
+    // B. Trigger Upload
+    await processUploadQueue(filesToUpload);
+
+    // Clear input so same file can be selected again
+    e.target.value = '';
 });
+
+
+// --- 5. New Course / Reset Logic ---
+function resetCourse() {
+    if(confirm("Start a new session? (This is just a visual reset for the demo)")) {
+        document.getElementById("chatBox").innerHTML = `
+            <div class="message bot">👋 New session started! Upload a PDF to begin.</div>
+        `;
+        document.getElementById('uploadStatus').innerHTML = ""; // Clear file list
+        switchTab('summary');
+    }
+}
 
 function startQuiz() {
     alert("Generating Quiz from uploaded notes...");
-    // Logic to trigger quiz generation would go here
 }
 
-async function uploadFile() {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
+/* FILE: static/script.js - Part to Update */
 
-    if (!file) {
-        alert("Please select a file first.");
-        return;
-    }
+// --- Helper: Render a File Item with Actions ---
+function renderFileItem(id, name, container) {
+    const fileItem = document.createElement('div');
+    fileItem.className = 'file-item';
+    fileItem.id = `note-${id}`;
 
-    // Create a FormData object to send the file
+    fileItem.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+            <span>📄</span>
+            <a href="/api/file/${id}" target="_blank" class="file-name" id="name-${id}" title="Click to view">
+                ${name}
+            </a>
+        </div>
+        <div class="actions">
+            <button onclick="renameNote(${id}, '${name}')" title="Rename">✏️</button>
+            <button onclick="deleteNote(${id})" title="Delete" style="color:#e74c3c;">🗑️</button>
+        </div>
+    `;
+    container.appendChild(fileItem);
+}
+
+// --- Updated History Loader ---
+window.onload = async function() {
+    const courseId = getCourseId();
+    if(!courseId) return;
+
+    try {
+        const response = await fetch(`/api/history?course_id=${courseId}`);
+        const data = await response.json();
+
+        if (data.has_history) {
+            // Restore File List (Now using IDs)
+            const listContainer = document.getElementById('uploadStatus');
+            listContainer.innerHTML = ""; // Clear list first
+
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(file => {
+                    renderFileItem(file.id, file.name, listContainer);
+                });
+            }
+
+            // Restore Chat... (Keep existing chat logic)
+            if (data.chats.length > 0) {
+                const chatBox = document.getElementById("chatBox");
+                chatBox.innerHTML = '';
+                data.chats.forEach(chat => {
+                    const role = chat.is_user ? 'user' : 'bot';
+                    chatBox.innerHTML += `<div class="message ${role}">${chat.text}</div>`;
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+    } catch (e) { console.log("No history found."); }
+};
+
+// --- Updated Upload Processor ---
+async function processUploadQueue(queue) {
+    const courseId = getCourseId();
+    // ... (keep FormData creation logic) ...
     const formData = new FormData();
-    formData.append('file', file);
-
-    // Show loading state
-    const btnLabel = document.querySelector('.file-upload-btn');
-    btnLabel.textContent = "⏳ Uploading...";
+    formData.append('course_id', courseId);
+    queue.forEach(item => formData.append('file', item.file));
 
     try {
         const response = await fetch('/api/upload', {
@@ -130,38 +189,60 @@ async function uploadFile() {
         const data = await response.json();
 
         if (response.ok) {
-            btnLabel.textContent = "✓ " + data.filename;
-            btnLabel.style.background = "#4caf50";
+            // Clear the "Pending" list items
+            document.getElementById('uploadStatus').innerHTML = "";
 
-            // Auto-switch to Summary
+            // Re-render the list with the confirmed IDs from server
+            data.files.forEach(file => {
+                renderFileItem(file.id, file.name, document.getElementById('uploadStatus'));
+            });
+
             switchTab('summary');
-            document.querySelector('.placeholder-text').textContent = "File saved securely. MindSpore is processing...";
         } else {
             alert("Upload failed: " + data.error);
         }
     } catch (error) {
-        console.error("Error:", error);
-        alert("Connection error.");
+        console.error(error);
     }
 }
 
-// Add this to window.onload to restore session
-window.onload = async function() {
+// --- NEW FUNCTIONS: Delete & Rename ---
+
+async function deleteNote(id) {
+    if(!confirm("Are you sure you want to delete this note?")) return;
+
     try {
-        const response = await fetch('/api/history');
-        const data = await response.json();
+        const response = await fetch(`/api/note/${id}`, { method: 'DELETE' });
 
-        if (data.has_history) {
-            // Restore the UI state
-            document.querySelector('.file-upload-btn').textContent = "✓ " + data.last_file;
-            document.querySelector('.file-upload-btn').style.background = "#4caf50";
-
-            // Add a "Welcome Back" message
-            document.getElementById("chatBox").innerHTML += `
-                <div class="message bot">Welcome back! I've reloaded your notes on <b>${data.last_file}</b>.</div>
-            `;
+        if (response.ok) {
+            // Remove from UI immediately
+            document.getElementById(`note-${id}`).remove();
+        } else {
+            alert("Failed to delete.");
         }
-    } catch (e) {
-        console.log("No previous history found.");
-    }
-};
+    } catch (e) { console.error(e); }
+}
+
+async function renameNote(id, oldName) {
+    const newName = prompt("Enter new filename:", oldName);
+    if (!newName || newName === oldName) return;
+
+    try {
+        const response = await fetch(`/api/note/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_name: newName })
+        });
+
+        if (response.ok) {
+            // Update UI
+            document.getElementById(`name-${id}`).textContent = newName;
+            // Update the onclick event to have the new name for next time
+            const btn = document.querySelector(`#note-${id} button[title="Rename"]`);
+            btn.setAttribute('onclick', `renameNote(${id}, '${newName}')`);
+        } else {
+            alert("Failed to rename.");
+        }
+    } catch (e) { console.error(e); }
+}
+
