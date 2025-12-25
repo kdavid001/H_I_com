@@ -21,7 +21,7 @@ git status
 
 #### 3. Install the Packages(Flask)
 ```
-pip install -r requirements.txt
+pip install -r requirement.txt
 ```
 
 ##### 4. Run the app
