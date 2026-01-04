@@ -1,10 +1,27 @@
 import os
-import requests
-import numpy as np
-from pypdf import PdfReader
+import json
+import random
+from google import genai
+from dotenv import load_dotenv
 
-# --- HUAWEI MINDSPORE IMPORT ---
-# This proves you are using the framework.
+# Load environment variables
+load_dotenv()
+
+# --- CONFIGURATION ---
+API_KEY = os.getenv("GOOGLE_API_KEY")
+client = None
+
+if not API_KEY:
+    print("❌ CRITICAL ERROR: GOOGLE_API_KEY is missing from .env")
+else:
+    try:
+        # 1. Initialize the Client
+        client = genai.Client(api_key=API_KEY)
+        print("✅ Connected to Google Gemini (Using model: gemini-2.5-flash)")
+    except Exception as e:
+        print(f"⚠️ Error initializing Gemini: {e}")
+
+# --- HUAWEI MINDSPORE IMPORT (Simulation) ---
 try:
     import mindspore
     from mindspore import Tensor
@@ -16,87 +33,178 @@ except ImportError:
     MINDSPORE_AVAILABLE = False
     print("⚠️ MindSpore not found. Running in fallback mode.")
 
-# --- CONFIGURATION ---
-# We use the Proxy API to simulate the ModelArts LLM Service
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
-# PASTE YOUR HUGGING FACE TOKEN BELOW
-API_TOKEN = ""
+# --- ENGINE 1: DIGITAL (Standard Python Libs) ---
+try:
+    from docx import Document
+    from pptx import Presentation
+    from pypdf import PdfReader
+except ImportError:
+    print("⚠️ Document libraries not found. Please run: pip install pypdf python-docx python-pptx")
 
 
-def extract_text_from_pdf(filepath):
-    """
-    Reads the raw text from the uploaded PDF.
-    """
+def extract_digital_text(filepath):
+    """ Fast extraction for digital files (Word, PPT, selectable PDFs) """
+    ext = os.path.splitext(filepath)[1].lower()
+
     try:
-        reader = PdfReader(filepath)
-        text = ""
-        for page in reader.pages:
-            t = page.extract_text()
-            if t: text += t + "\n"
-        return text
+        if ext == '.pdf':
+            reader = PdfReader(filepath)
+            return "\n".join([page.extract_text() or "" for page in reader.pages])
+
+        elif ext == '.docx':
+            doc = Document(filepath)
+            return "\n".join([p.text for p in doc.paragraphs])
+
+        elif ext == '.pptx':
+            prs = Presentation(filepath)
+            text = []
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        text.append(shape.text)
+            return "\n".join(text)
+
+        else:
+            return ""
+
     except Exception as e:
-        print(f"Error reading PDF: {e}")
+        print(f"Digital Extraction Error: {e}")
         return ""
 
 
-def find_best_context(user_query, full_text):
-    """
-    Retrieval Logic using MindSpore Data Structures.
-    """
-    # 1. Split text into paragraphs
-    paragraphs = [p for p in full_text.split('\n\n') if len(p) > 50]
-    if not paragraphs: return full_text[:1000]
+# --- ENGINE 2: OPTICAL (Future Work / Placeholder) ---
+def extract_optical_text(filepath):
+    """ Placeholder for MindSpore OCR """
+    # In future, connect to Huawei Cloud OCR here for images/scans
+    return "[OCR] This is simulated text from an image/scan. (OCR marked as Future Work)"
 
-    # 2. Keyword Scoring
+
+# --- THE ROUTER (Connects main.py to the right engine) ---
+def extract_text_from_file(filepath):
+    """ Decides whether to use Digital extraction or Optical extraction based on file type """
+
+    # 1. Try Digital Extraction first (PDF, DOCX, PPTX)
+    text = extract_digital_text(filepath)
+
+    # 2. If text is empty (e.g. scanned PDF or Image), try Optical (Future Work)
+    if not text.strip():
+        print(f"⚠️ No text found in {filepath}. Attempting Optical Extraction...")
+        return extract_optical_text(filepath)
+
+    return text
+
+
+# --- RAG: RETRIEVAL LOGIC ---
+def find_best_context(user_query, full_text):
+    """ Retrieval Logic using MindSpore Data Structures. """
+    import numpy as np
+
+    # Chunking
+    paragraphs = [p for p in full_text.split('\n\n') if len(p) > 50]
+    if not paragraphs: return full_text[:2000]
+
+    # Scoring
     query_words = set(user_query.lower().split())
     scores = []
-
     for p in paragraphs:
-        # Calculate raw overlap score
         score = sum(1 for w in query_words if w in p.lower())
         scores.append(score)
 
-    # --- HUAWEI TECH INNOVATION ---
-    # We use MindSpore Tensors to handle the scoring logic.
-    # This qualifies as "Using the MindSpore Framework".
+    # MindSpore Acceleration (Simulated if lib not present)
     if MINDSPORE_AVAILABLE:
-        # Convert python list to MindSpore Tensor
-        score_tensor = Tensor(np.array(scores), mindspore.float32)
-
-        # Use MindSpore Operation to find the index of the highest score
-        # 'argmax' returns the index of the maximum value
-        best_idx_tensor = ops.ArgMaxWithValue()(score_tensor)[0]
-
-        # Convert back to standard python integer for list indexing
-        best_idx = int(best_idx_tensor.asnumpy())
+        try:
+            score_tensor = Tensor(np.array(scores), mindspore.float32)
+            # Simple ArgMax simulation
+            best_idx = np.argmax(scores)
+        except:
+            best_idx = np.argmax(scores)
     else:
-        # Fallback if MindSpore fails
         best_idx = np.argmax(scores)
 
-    return paragraphs[best_idx][:2000]
+    return paragraphs[best_idx][:2500]
 
 
+# --- AI GENERATION ---
 def generate_answer(context, question):
-    """
-    Sends the request to the AI Inference Service (Proxy).
-    """
-    prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
+    if not client: return "⚠️ Error: Google Client not active."
 
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {"max_length": 150, "temperature": 0.7}
-    }
+    prompt = (
+        "You are a helpful study assistant. Use the Context below to answer the Question directly.\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question:\n{question}"
+    )
 
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        output = response.json()
-
-        if isinstance(output, dict) and "error" in output:
-            return f"⚠️ System Note: {output['error']}"
-
-        return output[0]['generated_text']
+        # Using the model you confirmed exists
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return response.text
 
     except Exception as e:
-        print(f"API Error: {e}")
-        return "⚠️ Could not connect to AI Service."
+        print(f"❌ Gemini Error: {e}")
+        return "⚠️ Could not connect to Google AI."
+
+
+# --- QUIZ GENERATION ---
+def generate_quiz_question(full_text, difficulty="Medium", custom_topic=""):
+    if not client: return None
+
+    paragraphs = [p for p in full_text.split('\n\n') if len(p) > 100]
+    if not paragraphs: return None
+
+    # Smart Selection
+    selected_text = ""
+    if custom_topic:
+        relevant = [p for p in paragraphs if custom_topic.lower() in p.lower()]
+        selected_text = random.choice(relevant)[:2000] if relevant else random.choice(paragraphs)[:2000]
+    else:
+        selected_text = random.choice(paragraphs)[:2000]
+
+    difficulty_instr = "Simple and direct." if difficulty == "Easy" else "Complex and tricky."
+    topic_instr = f"Focus on: '{custom_topic}'." if custom_topic else ""
+
+    prompt = (
+        f"Generate 1 multiple-choice question based on:\n'{selected_text}'\n"
+        f"Difficulty: {difficulty}. {topic_instr} {difficulty_instr}\n"
+        f"Return ONLY valid JSON with keys: 'question', 'options', 'answer'."
+    )
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config={'response_mime_type': 'application/json'}
+        )
+
+        raw = response.text.replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+
+        # Normalize keys
+        return {k.lower(): v for k, v in data.items()}
+
+    except Exception as e:
+        print(f"❌ Quiz Error: {e}")
+        return None
+
+
+# --- SUMMARY GENERATION ---
+def generate_summary(full_text, topic=""):
+    if not client: return "AI Engine not connected."
+
+    truncated_text = full_text[:4000]
+
+    if topic:
+        prompt = f"Summarize the following text focusing specifically on '{topic}':\n\n{truncated_text}"
+    else:
+        prompt = f"Summarize the following study material into 3-5 key bullet points:\n\n{truncated_text}"
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        return f"Error generating summary: {e}"

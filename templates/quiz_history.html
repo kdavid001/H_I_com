@@ -1,10 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>Quiz History - {{ course.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* --- 1. THE SCROLL FIX --- */
+        /* We must use 'body', not 'head'. This overrides the chat app's lock. */
+        html, body {
+            overflow-y: auto !important; /* Forces scrollbar to appear */
+            height: auto !important;      /* Allows page to be longer than screen */
+        }
+
+        /* --- 2. Page Styles --- */
+        .history-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .session-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .session-header { display: flex; justify-content: space-between; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 15px; }
+        .score-badge { padding: 5px 12px; border-radius: 20px; font-weight: bold; }
+        .pass { background: #d4edda; color: green; }
+        .fail { background: #f8d7da; color: red; }
+
+        .question-review { margin-top: 10px; padding: 10px; background: #f9f9f9; border-left: 3px solid #ccc; font-size: 14px; }
+        .q-correct { border-left-color: green; }
+        .q-wrong { border-left-color: red; }
+        .back-btn { text-decoration: none; color: #666; font-size: 14px; display: inline-block; margin-bottom: 20px; }
+        .back-btn:hover { color: #007bff; text-decoration: underline; }
+    </style>
 </head>
 <body>
-$END$
+    <div class="history-container">
+        <a href="/study/{{ course.id }}" class="back-btn">← Back to Study Chat</a>
+        <h2>📚 Quiz History: {{ course.title }}</h2>
+
+        {% for sess in sessions %}
+        <div class="session-card">
+            <div class="session-header">
+                <div>
+                    <h3 style="margin:0;">{{ sess.name }}</h3>
+                    {% if sess.custom_topic %}
+                        <span style="font-size:12px; background:#eee; padding:2px 6px; border-radius:4px;">Topic: {{ sess.custom_topic }}</span>
+                    {% endif %}
+                    <div style="color:#888; font-size: 12px; margin-top: 4px;">{{ sess.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div>
+                    {% set percent = (sess.score / sess.total_questions * 100)|int if sess.total_questions > 0 else 0 %}
+                    <span class="score-badge {{ 'pass' if percent >= 50 else 'fail' }}">
+                        Score: {{ percent }}% ({{ sess.score }}/{{ sess.total_questions }})
+                    </span>
+                </div>
+            </div>
+
+            <details>
+                <summary style="cursor:pointer; color:#007bff; font-weight: 500;">View {{ sess.total_questions }} Questions</summary>
+                {% for res in sess.results %}
+                <div class="question-review {{ 'q-correct' if res.is_correct else 'q-wrong' }}">
+                    <strong>Q: {{ res.question }}</strong><br>
+                    <div style="margin-top:5px;">
+                        <span style="color:{{ 'green' if res.is_correct else 'red' }}">
+                            You picked: {{ res.selected_option }}
+                        </span>
+                        {% if not res.is_correct %}
+                        <br><span style="color:green; font-weight:bold;">Correct Answer: {{ res.correct_option }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </details>
+        </div>
+        {% else %}
+            <p style="text-align:center; color:#999; margin-top: 50px;">No quizzes taken yet.</p>
+        {% endfor %}
+    </div>
 </body>
 </html>

@@ -22,10 +22,12 @@ class Course(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # Relationships (Notes, Messages, and NOW Quizzes)
-    notes = db.relationship('Note', backref='course', lazy=True)
-    messages = db.relationship('ChatMessage', backref='course', lazy=True)
-    quizzes = db.relationship('QuizResult', backref='course', lazy=True)  # <--- Added This
+    # Relationships
+    notes = db.relationship('Note', backref='course', lazy=True, cascade="all, delete-orphan")
+    messages = db.relationship('ChatMessage', backref='course', lazy=True, cascade="all, delete-orphan")
+
+    # NEW: Link to Quiz Sessions (Groups of questions)
+    quiz_sessions = db.relationship('QuizSession', backref='course', lazy=True, cascade="all, delete-orphan")
 
 
 # 3. Chat Message
@@ -48,13 +50,31 @@ class Note(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
 
 
-# 5. Quiz Results (Corrected)
-class QuizResult(db.Model):
+# 5. NEW: Quiz Session (The "Folder" for a set of questions)
+class QuizSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    topic = db.Column(db.String(100))  # e.g., "Calculus Integration"
-    score = db.Column(db.Integer)  # e.g., 85
+    name = db.Column(db.String(100))  # e.g., "Quiz 1"
+    custom_topic = db.Column(db.String(150))  # e.g., "Vectors" (Optional)
+    score = db.Column(db.Integer, default=0)  # Total correct answers
+    total_questions = db.Column(db.Integer, default=0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Linked to COURSE, not just User.
-    # We can always find the user via: quiz.course.student
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+
+    # Relationship to get specific questions in this session
+    results = db.relationship('QuizResult', backref='session', lazy=True, cascade="all, delete-orphan")
+
+
+# 6. UPDATED: Quiz Results (Individual Questions)
+class QuizResult(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Link to the Session (Parent)
+    session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=False)
+
+    question = db.Column(db.String(500))
+    selected_option = db.Column(db.String(200))
+    correct_option = db.Column(db.String(200))
+    is_correct = db.Column(db.Boolean)
+    difficulty = db.Column(db.String(50))  # e.g., "Hard"
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)

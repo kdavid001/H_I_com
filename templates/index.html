@@ -4,29 +4,95 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduMind AI | Huawei ICT</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            display: none;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background: white; width: 400px; padding: 25px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from {transform: translateY(-20px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; color: #333; font-size: 18px; }
+        .close-btn { font-size: 24px; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #333; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; font-size: 13px; }
+        .form-group select, .form-group input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+
+        /* Custom Difficulty Buttons */
+        .difficulty-selector { display: flex; gap: 10px; }
+        .difficulty-selector input { display: none; }
+        .diff-btn {
+            flex: 1; text-align: center; padding: 10px; border: 1px solid #ddd;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 14px; color: #666;
+        }
+
+        input:checked + .diff-btn.easy { background: #e6f4ea; border-color: #28a745; color: #28a745; font-weight: bold; }
+        input:checked + .diff-btn.medium { background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold; }
+        input:checked + .diff-btn.hard { background: #f8d7da; border-color: #dc3545; color: #721c24; font-weight: bold; }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .start-btn { background: #007bff; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .start-btn:hover { background: #0056b3; }
+        .cancel-btn { background: #f1f3f4; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+
 <body>
     <input type="hidden" id="currentCourseId" value="{{ course.id }}">
+
     <aside class="sidebar">
         <div class="brand">
-    <a href="/" style="text-decoration:none;"><h1>🧠 EduMind AI</h1></a> <span class="subtitle">{{ course.title }}</span>
+            <a href="/" style="text-decoration:none;"><h1>🧠 EduMind AI</h1></a>
+            <span class="subtitle">{{ course.title }}</span>
         </div>
 
-    <div class="upload-section">
-    <label for="fileInput" class="file-upload-btn">
-        <span>📄</span> Upload Study Materials
-    </label>
-    <input type="file" id="fileInput" accept=".pdf" multiple>
-
-    <div id="uploadStatus" class="file-list-container">
+        <div class="upload-section">
+            <div class="upload-dropzone" id="dropzone">
+                <input type="file" id="fileInput" accept=".pdf,.docx,.pptx" multiple onchange="handleFileSelect(this)">
+                <span class="dropzone-icon">☁️</span>
+                <span class="dropzone-text">Drag & Drop files</span>
+                <span class="dropzone-subtext">PDF, Word, or PPT</span>
+            </div>
+            <div id="uploadStatus" class="file-list-container"></div>
         </div>
-</div>
 
-<div class="library-section" style="margin-top: 20px;">
-    <h3 style="font-size: 14px; color: #333; margin-bottom: 10px;">📚 Your Library</h3>
-    <ul id="fileList" style="list-style: none; padding: 0; font-size: 13px; color: #666;">
-        </ul>
-</div>
+        <div class="library-section" style="margin-top: 20px;">
+            <h3 style="font-size: 14px; color: #333; margin-bottom: 10px;">
+                📚 Your Library
+            </h3>
+            <ul id="fileList" style="list-style: none; padding: 0; font-size: 13px; color: #666;">
+                {% for note in notes %}
+                <li class="file-item" id="note-{{ note.id }}">
+                    <div class="file-info">
+                        <input type="checkbox" class="note-checkbox" value="{{ note.id }}" checked>
+                        <span id="name-{{ note.id }}" title="{{ note.filename }}">
+                            {{ note.filename[:15] }}{{ '...' if note.filename|length > 15 }}
+                        </span>
+                    </div>
+                    <div class="file-actions">
+                        <button onclick="renameNote({{ note.id }}, '{{ note.filename }}')" title="Rename">✏️</button>
+                        <button onclick="deleteNote({{ note.id }})" title="Delete" class="delete-btn">🗑️</button>
+                    </div>
+                </li>
+                {% else %}
+                <li style="padding: 10px; font-style: italic; color: #999;">No notes uploaded yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
 
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('summary')">Summary</button>
@@ -36,73 +102,130 @@
 
         <div id="tab-summary" class="tab-content active">
             <h3>📝 AI Summary</h3>
-            <p class="placeholder-text">Upload a document to generate a structured summary of key topics here.</p>
-            <div id="summary-text" style="display: none;">
-                </div>
+
+            <p class="placeholder-text" style="margin-bottom: 15px;">
+                Click below to generate a comprehensive summary inside the chat window.
+            </p>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">Specific Topic (Optional):</label>
+                <input type="text" id="summary-topic" placeholder="e.g. Chapter 3, Formulas..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+            </div>
+
+            <button onclick="fetchSummary()" class="action-btn">
+                ✨ Generate to Chat
+            </button>
         </div>
 
         <div id="tab-quiz" class="tab-content">
             <h3>⚡ Quick Quiz</h3>
-            <p class="placeholder-text">Ready to test yourself? AI will generate questions based on your notes.</p>
+            <p class="placeholder-text">Ready to test yourself?</p>
+
             <button class="action-btn" onclick="startQuiz()">Generate Quiz</button>
+
+            <a href="/quiz_history/{{ course.id }}" class="action-btn secondary" style="margin-top:10px; display:block; text-align:center; text-decoration:none; background:#6c757d; color: white;">
+                Review Past Quizzes
+            </a>
         </div>
 
         <div id="tab-stats" class="tab-content">
-            <h3>📊 Progress Tracking</h3>
-            <div class="stat-item">
-                <span class="stat-label">Mastery</span>
-                <span class="good">78%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            <div class="stat-item" style="margin-top: 15px;">
-                <span class="stat-label">Weak Area</span>
-                <span class="bad">Vectors</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Topics</span>
-                <span style="color: #667eea; font-weight: 700;">12/18</span>
-            </div>
-        </div>
-        <div class="stats">
+            <h3>📊 Progress</h3>
+            <div class="stat-item"><span class="stat-label">Mastery</span><span class="good">78%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 78%;"></div></div>
+            <div class="stat-item" style="margin-top: 10px;"><span class="stat-label">Weak Area</span><span class="bad">Vectors</span></div>
         </div>
 
-    <div class="user-footer">
-        <div class="user-info">
-            <div class="avatar">👤</div>
-            <span class="username">{{ username }}</span>
+        <div class="user-footer">
+            <div class="user-info">
+                <div class="avatar">👤</div>
+                <span class="username">{{ username }}</span>
+            </div>
+            <a href="/logout" class="logout-btn">Sign Out</a>
         </div>
-        <a href="/logout" class="logout-btn">
-            Sign Out
-        </a>
-    </div>
     </aside>
 
     <main class="chat-container">
         <header class="chat-header">
             <div class="status-dot"></div>
-            Study Mode · Connected to <strong>Huawei ModelArts</strong>
+            Study Mode · Connected to <strong>Huawei MindSpore (Hybrid)</strong>
         </header>
 
         <section class="chat-box" id="chatBox">
             <div class="message bot">
-                👋 Hello! I've analyzed your notes and I'm ready to help you study. Ask me anything or type "Quiz me"!
+                👋 Hello! I am ready to analyze your notes for <b>{{ course.title }}</b>.
             </div>
+            {% for msg in history %}
+                {% if msg.is_user %}
+                    <div class="message user">{{ msg.text }}</div>
+                {% else %}
+                    <div class="message bot">{{ msg.text }}</div>
+                {% endif %}
+            {% endfor %}
         </section>
 
         <footer class="input-area">
-            <input
-                type="text"
-                id="userInput"
-                placeholder="Ask a question..."
-                autocomplete="off"
-                onkeypress="if(event.key==='Enter') sendMessage()"
-            >
+            <div style="font-size: 11px; color: #888; margin-bottom: 5px; margin-left: 10px;">
+                💡 Pro Tip: Type <b>"Quiz me"</b> or click the button!
+            </div>
+            <input type="text" id="userInput" placeholder="Ask a question..." autocomplete="off" onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="toggleRecording()" id="micBtn" style="background: #6c757d; padding: 15px 20px;" title="Speak">
+                🎤
+             </button>
             <button onclick="sendMessage()">Send</button>
         </footer>
     </main>
 
-<script src="{{ url_for('static', filename='script.js') }}?v=2"></script>
+    <div id="quiz-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Configure Quiz Session</h3>
+                <span class="close-btn" onclick="closeQuizModal()">×</span>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Number of Questions:</label>
+                    <select id="quiz-count">
+                        <option value="1">1 Question</option>
+                        <option value="3">3 Questions</option>
+                        <option value="5" selected>5 Questions</option>
+                        <option value="10">10 Questions</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Specific Topic (Optional):</label>
+                    <input type="text" id="quiz-topic" placeholder="e.g. Chapter 1, Dates, Definitions...">
+                </div>
+
+                <div class="form-group">
+                    <label>Difficulty Level:</label>
+                    <div class="difficulty-selector">
+                        <input type="radio" name="difficulty" value="Easy" id="diff-easy">
+                        <label for="diff-easy" class="diff-btn easy">Easy</label>
+
+                        <input type="radio" name="difficulty" value="Medium" id="diff-medium" checked>
+                        <label for="diff-medium" class="diff-btn medium">Medium</label>
+
+                        <input type="radio" name="difficulty" value="Hard" id="diff-hard">
+                        <label for="diff-hard" class="diff-btn hard">Hard</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="cancel-btn" onclick="closeQuizModal()">Cancel</button>
+                <button class="start-btn" onclick="startCustomQuiz()">🚀 Start Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}?v=4"></script>
+    <script>
+        window.onload = function() {
+            var chatBox = document.getElementById("chatBox");
+            if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
 </body>
 </html>

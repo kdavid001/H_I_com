@@ -1,4 +1,6 @@
-/* FILE: style.css */
+/* FILE: static/style.css */
+
+/* --- 1. GLOBAL RESET & BODY --- */
 * {
     margin: 0;
     padding: 0;
@@ -10,12 +12,12 @@ body {
     display: flex;
     height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    overflow: hidden;
+    overflow: hidden; /* Chat app default: no scroll on body */
 }
 
-/* --- SIDEBAR STYLING --- */
+/* --- 2. SIDEBAR STRUCTURE --- */
 .sidebar {
-    width: 340px; /* Widened slightly for tabs */
+    width: 340px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     padding: 25px;
@@ -24,7 +26,7 @@ body {
     gap: 20px;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    justify-content: space-between;
+    justify-content: flex-start;
 }
 
 .brand {
@@ -52,49 +54,126 @@ body {
     margin-bottom: 15px;
 }
 
-/* New Course Button */
-.new-course-btn {
-    width: 100%;
-    padding: 10px;
-    background: transparent;
-    border: 2px dashed #667eea;
-    color: #667eea;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.new-course-btn:hover {
-    background: rgba(102, 126, 234, 0.1);
-}
-
-/* Upload Section */
+/* --- 3. UPLOAD SECTION (New Dropzone) --- */
 .upload-section {
     margin-bottom: 10px;
 }
 
-#fileInput { display: none; }
-
-.file-upload-btn {
-    display: block;
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px;
-    cursor: pointer;
+.upload-dropzone {
+    /* KEY: Relative positioning contains the absolute input */
+    position: relative;
+    border: 2px dashed #6c757d;
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    padding: 30px 20px;
     text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.upload-dropzone:hover, .upload-dropzone.drag-over {
+    background-color: #e9ecef;
+    border-color: #007bff;
+    transform: scale(1.02);
+}
+
+.dropzone-icon {
+    font-size: 40px;
+    color: #6c757d;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.dropzone-text {
     font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.dropzone-subtext {
+    font-size: 12px;
+    color: #888;
+}
+
+/* The Invisible Wall Trick */
+#fileInput {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0; /* Make invisible */
+    cursor: pointer;
+    z-index: 10; /* Sit on top */
+}
+
+/* --- 4. LIBRARY / FILE LIST --- */
+.library-section {
+    margin-top: 20px;
+}
+
+.file-list-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.file-item {
+    background: white;
+    padding: 12px 15px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s, border-color 0.2s;
+    font-size: 13px;
+    color: #444;
+}
+
+.file-item:hover {
+    transform: translateX(3px);
+    border-color: #007bff;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.note-checkbox { cursor: pointer; }
+
+.file-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.file-item:hover .file-actions { opacity: 1; }
+
+.file-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
     transition: transform 0.2s;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.file-upload-btn:hover {
-    transform: translateY(-2px);
-}
+.file-actions button:hover { transform: scale(1.1); }
+.delete-btn:hover { color: red; }
 
-/* --- TAB NAVIGATION SYSTEM --- */
+/* --- 5. TABS & CONTENT --- */
 .tab-nav {
     display: flex;
     justify-content: space-between;
@@ -123,9 +202,8 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* Tab Content Areas */
 .tab-content {
-    display: none; /* Hidden by default */
+    display: none;
     background: #f8f9fa;
     padding: 20px;
     border-radius: 16px;
@@ -133,19 +211,11 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-.tab-content.active {
-    display: block; /* Shown when active */
-}
+.tab-content.active { display: block; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-.tab-content h3 {
-    font-size: 15px;
-    color: #333;
-    margin-bottom: 10px;
 }
 
 .placeholder-text {
@@ -165,6 +235,7 @@ body {
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    transition: all 0.2s;
 }
 
 .action-btn:hover {
@@ -172,7 +243,16 @@ body {
     color: white;
 }
 
-/* Stats Styling */
+.action-btn.secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+}
+.action-btn.secondary:hover {
+    background: #5a6268;
+}
+
+/* Stats */
 .stat-item {
     display: flex;
     justify-content: space-between;
@@ -200,7 +280,7 @@ body {
     border-radius: 10px;
 }
 
-/* --- CHAT AREA STYLING --- */
+/* --- 6. CHAT AREA --- */
 .chat-container {
     flex: 1;
     display: flex;
@@ -238,6 +318,7 @@ body {
     background: #fdfdfd;
 }
 
+/* Message Bubbles */
 .message {
     padding: 15px 20px;
     border-radius: 18px;
@@ -247,20 +328,44 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.bot {
+.message.bot {
     background: #f0f2f5;
     color: #333;
     align-self: flex-start;
     border-bottom-left-radius: 4px;
+    border: 1px solid #eee;
 }
 
-.user {
+/* FILE: static/style.css */
+
+/* --- MARKDOWN STYLES --- */
+.message.bot ul, .message.bot ol {
+    margin-left: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.message.bot li {
+    margin-bottom: 5px;
+}
+
+.message.bot strong {
+    font-weight: 700;
+    color: #2d3748; /* Slightly darker for emphasis */
+}
+
+.message.bot p {
+    margin-bottom: 10px;
+}
+
+.message.user {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
 }
 
+/* Input Area */
 .input-area {
     padding: 20px;
     background: white;
@@ -269,7 +374,7 @@ body {
     border-top: 1px solid #eee;
 }
 
-input {
+input[type="text"] {
     flex: 1;
     padding: 15px;
     border: 2px solid #eee;
@@ -277,7 +382,7 @@ input {
     outline: none;
     transition: border 0.3s;
 }
-input:focus { border-color: #667eea; }
+input[type="text"]:focus { border-color: #667eea; }
 
 button {
     padding: 15px 30px;
@@ -291,16 +396,9 @@ button {
 }
 button:hover { transform: translateY(-2px); }
 
-/* Responsive */
-@media (max-width: 768px) {
-    body { flex-direction: column; }
-    .sidebar { width: 100%; height: 40vh; }
-    .chat-container { margin: 0; border-radius: 0; }
-}
-
-/* New User Footer Styling */
+/* --- 7. USER FOOTER --- */
 .user-footer {
-    margin-top: auto; /* Pushes this section to the very bottom */
+    margin-top: auto;
     padding-top: 20px;
     border-top: 1px solid #e0e0e0;
     display: flex;
@@ -329,108 +427,81 @@ button:hover { transform: translateY(-2px); }
 
 .logout-btn {
     text-decoration: none;
-    color: #d32f2f; /* Red color for logout */
+    color: #d32f2f;
     font-size: 13px;
     font-weight: 700;
     padding: 6px 12px;
     border-radius: 6px;
-    background: rgba(211, 47, 47, 0.1); /* Light red background */
+    background: rgba(211, 47, 47, 0.1);
     transition: all 0.2s;
 }
 
-.logout-btn:hover {
-    background: #d32f2f;
-    color: white;
+.logout-btn:hover { background: #d32f2f; color: white; }
+
+/* --- 8. MODAL STYLES (Quiz) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 1000;
+    display: none;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+}
+.modal-content {
+    background: white; width: 400px; padding: 25px; border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease-out;
+}
+@keyframes slideDown { from {transform: translateY(-20px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.modal-header h3 { margin: 0; color: #333; font-size: 18px; }
+.close-btn { font-size: 24px; cursor: pointer; color: #999; }
+.close-btn:hover { color: #333; }
+
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; font-size: 14px; }
+.form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+
+/* Custom Difficulty Buttons */
+.difficulty-selector { display: flex; gap: 10px; }
+.difficulty-selector input { display: none; }
+.diff-btn {
+    flex: 1; text-align: center; padding: 10px; border: 1px solid #ddd;
+    border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 14px; color: #666;
 }
 
-/* Add to style.css */
+input:checked + .diff-btn.easy { background: #e6f4ea; border-color: #28a745; color: #28a745; font-weight: bold; }
+input:checked + .diff-btn.medium { background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold; }
+input:checked + .diff-btn.hard { background: #f8d7da; border-color: #dc3545; color: #721c24; font-weight: bold; }
 
-.file-list-container {
-    margin-top: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 200px; /* Scroll if too many files */
-    overflow-y: auto;
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+.start-btn { background: #007bff; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+.start-btn:hover { background: #0056b3; }
+.cancel-btn { background: #f1f3f4; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+.cancel-btn:hover { background: #e2e6ea; }
+
+/* --- 9. RESPONSIVE --- */
+@media (max-width: 768px) {
+    body { flex-direction: column; overflow: auto; }
+    .sidebar { width: 100%; height: auto; min-height: 40vh; }
+    .chat-container { margin: 0; border-radius: 0; height: 60vh; }
+    .file-actions { opacity: 1; }
 }
 
-.file-item {
-    font-size: 13px;
-    color: #444;
-    background: rgba(255, 255, 255, 0.6);
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: fadeIn 0.3s ease;
+/* --- LOADING SPINNER --- */
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
 }
 
-.file-item .status {
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.status.pending { color: #f39c12; } /* Orange for waiting */
-.status.success { color: #27ae60; } /* Green for done */
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Add to static/style.css */
-
-.file-item {
-    /* Existing styles... */
-    display: flex;
-    justify-content: space-between; /* Pushes actions to the right */
-    align-items: center;
-    padding: 10px;
-}
-
-.file-name {
-    font-size: 13px;
-    color: #444;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px; /* Prevents long names breaking layout */
-}
-
-.actions {
-    display: flex;
-    gap: 5px;
-}
-
-.actions button {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 4px;
-    border-radius: 4px;
-    width: auto; /* Override global button width */
-}
-
-.actions button:hover {
-    background: rgba(0,0,0,0.05);
-    transform: scale(1.1);
-}
-
-/* Add to static/style.css */
-
-.file-name {
-    /* Existing styles... */
-    font-size: 13px;
-    color: #444;
-    text-decoration: none; /* Remove underline by default */
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.file-name:hover {
-    color: #667eea; /* Change color on hover */
-    text-decoration: underline; /* Add underline on hover */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
