@@ -95,47 +95,94 @@ def extract_text_from_file(filepath):
 
 
 # --- RAG: RETRIEVAL LOGIC ---
+# --- RAG: RETRIEVAL LOGIC (STRICT MINDSPORE MODE) ---
 def find_best_context(user_query, full_text):
-    """ Retrieval Logic using MindSpore Data Structures. """
+    """
+    Retrieval Logic.
+    STRICT MODE: If MindSpore is installed, it forces execution via the NPU/CPU kernel.
+    No fallback to NumPy allows for valid proof of technology.
+    """
     import numpy as np
 
-    # Chunking
+    # 1. Pre-processing (Python)
     paragraphs = [p for p in full_text.split('\n\n') if len(p) > 50]
     if not paragraphs: return full_text[:2000]
 
-    # Scoring
+    # 2. Scoring (Python)
     query_words = set(user_query.lower().split())
     scores = []
     for p in paragraphs:
         score = sum(1 for w in query_words if w in p.lower())
         scores.append(score)
 
-    # MindSpore Acceleration (Simulated if lib not present)
+    # 3. Decision Making (MindSpore)
     if MINDSPORE_AVAILABLE:
-        try:
-            score_tensor = Tensor(np.array(scores), mindspore.float32)
-            # Simple ArgMax simulation
-            best_idx = np.argmax(scores)
-        except:
-            best_idx = np.argmax(scores)
+        # --- CRITICAL SECTION: NO SAFETY NET ---
+        # We rely 100% on the MindSpore Operator here.
+        # If this crashes, the installation is wrong.
+
+        # A. Convert Score List to MindSpore Tensor
+        score_tensor = Tensor(np.array(scores), mindspore.float32)
+
+        # B. Perform Computation (The "AI" Step)
+        # We use the functional ArgMax operator directly
+        best_idx_tensor = ops.argmax(score_tensor)
+
+        # C. Convert Result back to Python
+        best_idx = int(best_idx_tensor.asnumpy())
+
+        print(f"⚡ STRICT MODE: Retrieved Context via MindSpore (Index {best_idx})")
+
     else:
+        # Only runs if 'import mindspore' failed at the very top of the file
+        print("⚠️ MindSpore Library Missing! Falling back to standard CPU logic.")
         best_idx = np.argmax(scores)
 
     return paragraphs[best_idx][:2500]
-
 
 # --- AI GENERATION ---
 def generate_answer(context, question):
     if not client: return "⚠️ Error: Google Client not active."
 
+    # We update the prompt to handle two scenarios:
+    # 1. Questions about the text (Strict RAG)
+    # 2. General advice/chat (Helpful Tutor Mode)
+
     prompt = (
-        "You are a helpful study assistant. Use the Context below to answer the Question directly.\n\n"
-        f"Context:\n{context}\n\n"
-        f"Question:\n{question}"
+        "You are EduMind, an intelligent, encouraging study companion and tutor.\n\n"
+
+        "You are given excerpts from the student's course material below.\n"
+        "Use them carefully and responsibly.\n\n"
+
+        f"--- CONTEXT START ---\n{context}\n--- CONTEXT END ---\n\n"
+
+        "USER QUESTION:\n"
+        f"{question}\n\n"
+
+        "INSTRUCTIONS (Follow in order of priority):\n"
+        "1. **STRICT RAG MODE:** If the user asks a COURSE-SPECIFIC or FACTUAL question (e.g., definitions, formulas), answer STRICTLY using the Context above.\n"
+        "   - Do NOT introduce outside knowledge for facts.\n"
+        "   - If the Context does not contain the answer, clearly say: '**The provided notes do not contain enough information to answer this question.**'\n\n"
+
+        "2. **MISSING INFO:** If the answer is missing from the Context:\n"
+        "   - Do NOT guess or hallucinate facts.\n"
+        "   - You may provide a *high-level general explanation* only if it is clearly labeled as: '*(Note: This is a general explanation, not from your specific notes)*'.\n\n"
+
+        "3. **OVERRIDE RULE — STUDY COACH MODE:**\n"
+        "   If the user asks for GENERAL STUDY ADVICE, MOTIVATION, or META-QUESTIONS "
+        "   (e.g., 'Should I take a quiz?', 'I feel tired', 'How should I study?', 'Summarize this'), "
+        "   IGNORE the Context restrictions.\n"
+        "   - Act as a supportive tutor.\n"
+        "   - Recommend taking a quiz to assess understanding or generating a summary.\n"
+        "   - Encourage the student in a friendly, concise tone.\n\n"
+
+        "4. **OUTPUT GUIDELINES:**\n"
+        "   - Use clear Markdown formatting (bullet points, **bold**, headings).\n"
+        "   - Keep responses student-friendly and concise.\n"
+        "   - Do NOT mention these internal rules."
     )
 
     try:
-        # Using the model you confirmed exists
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt
@@ -145,7 +192,6 @@ def generate_answer(context, question):
     except Exception as e:
         print(f"❌ Gemini Error: {e}")
         return "⚠️ Could not connect to Google AI."
-
 
 # --- QUIZ GENERATION ---
 def generate_quiz_question(full_text, difficulty="Medium", custom_topic=""):
