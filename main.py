@@ -1,11 +1,11 @@
 import os
-import json  # Required for Quiz JSON handling
+import json
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for, flash, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-# Ensure your models.py has QuizSession and QuizResult
 from models import db, User, Note, ChatMessage, Course, QuizResult, QuizSession
-from ai_engine import find_best_context, generate_answer, generate_quiz_question, extract_text_from_file
+from ai_engine import (find_best_context, generate_answer, generate_quiz_question, extract_text_from_file,
+                       generate_summary)
 from sqlalchemy import func
 
 app = Flask(__name__)
@@ -23,13 +23,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Connect DB
 db.init_app(app)
 
-# Create Tables (Run this once)
+# Create Tables
 with app.app_context():
     db.create_all()
 
 
 # --- AUTH ROUTES ---
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -72,7 +71,6 @@ def logout():
 
 
 # --- MAIN APP ROUTES ---
-
 @app.route('/')
 def home():
     if 'user_id' not in session: return redirect(url_for('login'))
@@ -93,7 +91,6 @@ def create_course():
 @app.route('/study/<int:course_id>')
 def study(course_id):
     if 'user_id' not in session: return redirect(url_for('login'))
-
     course = Course.query.get_or_404(course_id)
     notes = Note.query.filter_by(course_id=course_id).all()
     history = ChatMessage.query.filter_by(course_id=course_id).order_by(ChatMessage.timestamp).all()
@@ -105,13 +102,10 @@ def study(course_id):
                            username=session.get('username'))
 
 
-# --- IN main.py ---
-
-# 1. THE UPLOAD ROUTE
+# THE UPLOAD ROUTE
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'user_id' not in session: return jsonify({"error": "Unauthorized"}), 401
-
     course_id = request.form.get('course_id')
     files = request.files.getlist('file')  # <--- Must match JS formData
     saved_files_data = []
@@ -138,9 +132,7 @@ def upload_file():
     return jsonify({"message": "Files processed", "files": saved_files_data})
 
 
-# 2. THE SUMMARY ROUTE
-# In main.py
-
+# THE SUMMARY ROUTE
 @app.route('/api/summary', methods=['POST'])
 def get_summary():
     if 'user_id' not in session: return 401
@@ -156,11 +148,9 @@ def get_summary():
     full_text = " ".join([n.extracted_text for n in notes if n.extracted_text])
 
     # Generate Summary
-    from ai_engine import generate_summary
     summary_text = generate_summary(full_text, topic)
 
-    # --- NEW: Save to Database so it persists in Chat History ---
-    # We prepend a little emoji header so it looks nice
+    # ---Saved to Database, so it persists in Chat History ---
     formatted_summary = f"**📝 Study Summary**\n\n{summary_text}"
 
     new_msg = ChatMessage(text=formatted_summary, is_user=False, course_id=course_id)
@@ -186,7 +176,6 @@ def upload_ocr_file():
         file.save(save_path)
 
         # ENGINE 2: Optical (MindSpore)
-        # This might take longer, so we await it
         text = extract_text_from_file(save_path)
 
         new_note = Note(filename=filename, extracted_text=text, course_id=course_id)
@@ -195,6 +184,7 @@ def upload_ocr_file():
         saved_data.append({'id': new_note.id, 'name': filename})
 
     return jsonify({"message": "OCR processing complete", "files": saved_data})
+
 
 # --- THE CORE CHAT & QUIZ LOGIC ---
 @app.route('/api/chat', methods=['POST'])
@@ -206,15 +196,15 @@ def chat():
     course_id = data.get('course_id')
     selected_note_ids = data.get('note_ids', [])
 
-    # NEW: Capture Difficulty AND Custom Topic
+    # Capture Difficulty AND Custom Topic
     difficulty = data.get('difficulty', 'Medium')
-    custom_topic = data.get('custom_topic', '')  # <--- NEW FIELD
+    custom_topic = data.get('custom_topic', '')
 
-    # 1. Save User Message (We always save what the user types)
+    # Save User Message.
     msg = ChatMessage(text=user_message, is_user=True, course_id=course_id)
     db.session.add(msg)
 
-    # 2. Gather Text Context
+    # Gather Text Context
     query = Note.query.filter_by(course_id=course_id)
     if selected_note_ids:
         query = query.filter(Note.id.in_(selected_note_ids))
@@ -229,17 +219,11 @@ def chat():
     if user_message.lower().strip() == "/quiz" or "quiz me" in user_message.lower():
 
         # Call AI Engine with Difficulty AND Custom Topic
-        # Make sure ai_engine.py accepts the 3rd argument!
         quiz_data = generate_quiz_question(full_text, difficulty, custom_topic)
 
         if quiz_data:
-            # --- CRITICAL CHANGE ---
-            # We DO NOT save the quiz to ChatMessage DB anymore.
-            # This ensures it is "cleared" from the prompt box upon reload.
-            # The history is now handled by the 'QuizSession' table.
-
             return jsonify({
-                "response": quiz_data,  # Return Object for JS to render
+                "response": quiz_data,
                 "is_quiz": True
             })
         else:
@@ -250,7 +234,7 @@ def chat():
         # RAG Search (MindSpore)
         context = find_best_context(user_message, full_text)
 
-        # Generation (Gemini)
+        # Generation (Uses Gemini API for now will switch to MindsporeLLM for the Phase 2)
         response_text = generate_answer(context, user_message)
 
         # Save History (Normal chat should be saved)
@@ -267,7 +251,7 @@ def start_session():
     if 'user_id' not in session: return 401
     data = request.json
     course_id = data.get('course_id')
-    custom_topic = data.get('custom_topic', '') # <--- Get the topic
+    custom_topic = data.get('custom_topic', '')
 
     # Count existing quizzes
     count = QuizSession.query.filter_by(course_id=course_id).count()
@@ -277,7 +261,7 @@ def start_session():
     new_session = QuizSession(
         name=new_name,
         course_id=course_id,
-        custom_topic=custom_topic # <--- Save it!
+        custom_topic=custom_topic
     )
     db.session.add(new_session)
     db.session.commit()
@@ -285,7 +269,7 @@ def start_session():
     return jsonify({"session_id": new_session.id, "name": new_name})
 
 
-# --- UPDATED: SUBMIT RESULT ---
+# --- SUBMIT RESULT ---
 @app.route('/api/quiz/submit', methods=['POST'])
 def submit_quiz_result():
     data = request.json
@@ -300,7 +284,7 @@ def submit_quiz_result():
     )
     db.session.add(new_result)
 
-    # Update Session Score
+    # Session Score
     quiz_session = QuizSession.query.get(data.get('session_id'))
     if quiz_session:
         quiz_session.total_questions += 1
@@ -311,14 +295,15 @@ def submit_quiz_result():
     return jsonify({"status": "saved"})
 
 
-# --- NEW ROUTE: VIEW HISTORY PAGE ---
+# --- VIEW HISTORY PAGE ---
 @app.route('/quiz_history/<int:course_id>')
 def quiz_history(course_id):
     if 'user_id' not in session: return redirect(url_for('login'))
 
     course = Course.query.get_or_404(course_id)
-    # Get all sessions, newest first
-    sessions = QuizSession.query.filter_by(course_id=course_id).order_by(QuizSession.timestamp.desc()).all()
+
+    sessions = QuizSession.query.filter_by(course_id=course_id).order_by(
+        QuizSession.timestamp.desc()).all()  # Get all sessions, newest first
 
     return render_template('quiz_history.html', course=course, sessions=sessions)
 
@@ -359,10 +344,9 @@ def delete_course(course_id):
     Note.query.filter_by(course_id=course_id).delete()
     ChatMessage.query.filter_by(course_id=course_id).delete()
 
-    # Also delete history
+    #  delete history
     QuizSession.query.filter_by(course_id=course_id).delete()
     # QuizResult will auto-delete due to DB cascade if configured, otherwise do manually:
-    # QuizResult.query.filter_by(course_id=course_id).delete()
 
     db.session.delete(course)
     db.session.commit()
@@ -379,14 +363,13 @@ def rename_course(course_id):
     return jsonify({"message": "Renamed"})
 
 
-
 @app.route('/api/stats', methods=['GET'])
 def get_user_stats():
     if 'user_id' not in session: return 401
 
     course_id = request.args.get('course_id')
 
-    # 1. Get all quiz results for this course
+    # Get all quiz results for this course
     # We join QuizResult with QuizSession to filter by course
     results = db.session.query(QuizResult, QuizSession).join(QuizSession) \
         .filter(QuizSession.course_id == course_id).all()
@@ -394,8 +377,8 @@ def get_user_stats():
     if not results:
         return jsonify({"has_data": False})
 
-    # 2. Calculate Mastery & Weaknesses
-    topic_scores = {}  # {'Vectors': [1, 0, 1], 'Calculus': [0, 0]}
+    # Calculate Mastery & Weaknesses
+    topic_scores = {}  #
     total_correct = 0
     total_questions = 0
 
@@ -409,7 +392,7 @@ def get_user_stats():
         total_correct += is_correct
         total_questions += 1
 
-    # 3. Find Weakest Area
+    # Finds Weakest Area
     weakest_topic = "None"
     lowest_avg = 100
 
@@ -419,14 +402,15 @@ def get_user_stats():
             lowest_avg = avg
             weakest_topic = topic
 
-    # 4. Generate Recommendation
+    # Generate Recommendation
     mastery_pct = int((total_correct / total_questions) * 100)
 
     recommendation = ""
     if mastery_pct > 80:
         recommendation = "You are doing great! Try increasing quiz difficulty to 'Hard'."
     elif weakest_topic != "None":
-        recommendation = f"We noticed you are struggling with '{weakest_topic}'. Try generating a Summary specifically for '{weakest_topic}' to review."
+        recommendation = (f"We noticed you are struggling with '{weakest_topic}'. Try generating a Summary "
+                          f"specifically for '{weakest_topic}' to review.")
     else:
         recommendation = "Keep taking quizzes to build your profile."
 
@@ -437,5 +421,7 @@ def get_user_stats():
         "recommendation": recommendation,
         "total_quizzes": len(results)
     })
+
+
 if __name__ == '__main__':
     app.run(debug=True)

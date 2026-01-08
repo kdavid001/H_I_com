@@ -17,7 +17,7 @@ python-docx==1.2.0
 python-pptx==1.0.2
 
 # --- MindSpore (See Note Below) ---
-# Only keep this line if you are strictly running on Mac M1/M2 with Python 3.9
-# If deploying to Cloud/Linux, you must remove this and install the Linux version instead.
+# Only keep this line if you are strictly running on Mac OS with a silicon chip e,g M1/M2 with Python 3.9
+# If deploying to Cloud/Linux, you must remove this and install the Linux version instead. Go to the mindspore link provided in the README.md
 # mindspore @ https://ms-release.obs.cn-north-4.myhuaweicloud.com/2.6.0/MindSpore/cpu/aarch64/mindspore-2.6.0-cp39-cp39-macosx_11_0_arm64.whl#sha256=98a5f15558eecce21c1a657cf1d212dae7eaf511bff721c7ad1d048244c75474
 # numpy==1.26.4

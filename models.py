@@ -4,7 +4,7 @@ from datetime import datetime
 db = SQLAlchemy()
 
 
-# 1. User
+# User
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -15,7 +15,7 @@ class User(db.Model):
     courses = db.relationship('Course', backref='student', lazy=True)
 
 
-# 2. Course
+# Course
 class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
@@ -26,11 +26,11 @@ class Course(db.Model):
     notes = db.relationship('Note', backref='course', lazy=True, cascade="all, delete-orphan")
     messages = db.relationship('ChatMessage', backref='course', lazy=True, cascade="all, delete-orphan")
 
-    # NEW: Link to Quiz Sessions (Groups of questions)
+    # Link to Quiz Sessions (Groups of questions)
     quiz_sessions = db.relationship('QuizSession', backref='course', lazy=True, cascade="all, delete-orphan")
 
 
-# 3. Chat Message
+# Chat Message
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
@@ -40,7 +40,7 @@ class ChatMessage(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
 
 
-# 4. Notes
+# Notes
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(200), nullable=False)
@@ -50,7 +50,7 @@ class Note(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
 
 
-# 5. NEW: Quiz Session (The "Folder" for a set of questions)
+# Quiz Session (The "Folder" for a set of questions)
 class QuizSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))  # e.g., "Quiz 1"
@@ -65,7 +65,7 @@ class QuizSession(db.Model):
     results = db.relationship('QuizResult', backref='session', lazy=True, cascade="all, delete-orphan")
 
 
-# 6. UPDATED: Quiz Results (Individual Questions)
+# Quiz Results (Individual Questions)
 class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -76,5 +76,5 @@ class QuizResult(db.Model):
     selected_option = db.Column(db.String(200))
     correct_option = db.Column(db.String(200))
     is_correct = db.Column(db.Boolean)
-    difficulty = db.Column(db.String(50))  # e.g., "Hard"
+    difficulty = db.Column(db.String(50))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

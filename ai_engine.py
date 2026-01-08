@@ -149,7 +149,7 @@ def generate_answer(context, question):
     # 2. General advice/chat (Helpful Tutor Mode)
 
     prompt = (
-        "You are EduMind, an intelligent, encouraging study companion and tutor.\n\n"
+        "You are Chokhmah, an intelligent, encouraging study companion and tutor.\n\n"
 
         "You are given excerpts from the student's course material below.\n"
         "Use them carefully and responsibly.\n\n"
