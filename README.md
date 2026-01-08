@@ -1,11 +1,11 @@
-# 🧠 EduMind AI | Huawei ICT Competition 2025-2026
+# 🧠 Chokhmah AI | Huawei ICT Competition 2025-2026
 ### *Personalized Learning Intelligence (PLI) Platform*
 
 ![Huawei MindSpore](https://img.shields.io/badge/Powered%20By-Huawei%20MindSpore-c0392b?style=for-the-badge&logo=huawei)
 ![Python Flask](https://img.shields.io/badge/Backend-Flask-000000?style=for-the-badge&logo=flask)
 ![Status](https://img.shields.io/badge/Phase-1%20Prototype-success?style=for-the-badge)
 
-**EduMind AI** is an adaptive study companion designed to solve the "Cold Start" problem in education. Unlike traditional tools that require weeks to learn a student's habits, EduMind uses **Retrieval-Augmented Imitation Learning** to instantly "imitate" the expert logic found in uploaded course materials, providing immediate, grounded tutoring.
+**Chokhmah AI** is an adaptive study companion designed to solve the "Cold Start" problem in education. Unlike traditional tools that require weeks to learn a student's habits, Chokhmah uses **Retrieval-Augmented Imitation Learning** to instantly "imitate" the expert logic found in uploaded course materials, providing immediate, grounded tutoring.
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## 🛠️ Tech Stack & Huawei Integration
 
-| Component | Technology Used | Role in EduMind |
+| Component | Technology Used | Role in Chokhmah |
 | :--- | :--- | :--- |
 | **Backend Framework** | Python (Flask) | Main application logic and API routing. |
 | **AI Processing** | **Huawei MindSpore** (Hybrid) | Tensor operations for text chunking & retrieval logic. |
