@@ -1,6 +1,4 @@
-/* FILE: static/script.js */
-
-// --- 1. Global Variables & State ---
+// --- Global Variables & State ---
 let quizState = {
     total: 0,
     current: 0,
@@ -20,7 +18,7 @@ function scrollToBottom() {
     if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// --- 2. Tab & UI Logic ---
+// --- Tab & UI Logic ---
 function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -40,6 +38,7 @@ function switchTab(tabName) {
 }
 
 
+// ---UPDATED appendMessage FUNCTION ---
 function appendMessage(text, sender) {
     const chatBox = document.getElementById('chatBox');
     const msgDiv = document.createElement('div');
@@ -67,11 +66,28 @@ function appendMessage(text, sender) {
         }
     }
 
-    // CASE C: Normal Text (NOW WITH MARKDOWN PARSING)
+    // CASE C: Normal Text (Fixed)
     else {
-        // If it's the bot, parse the Markdown. If user, keep plain text (security)
+        // Render Text
         if (sender === 'bot') {
             msgDiv.innerHTML = marked.parse(text);
+
+            const btn = document.createElement("button");
+            btn.innerHTML = "🔊"; // Or use an SVG icon
+            btn.className = "voice-btn"; // Add CSS for this class!
+            btn.style.marginLeft = "10px";
+            btn.style.cursor = "pointer";
+            btn.style.border = "none";
+            btn.style.background = "transparent";
+
+            // On Click -> Read Aloud
+            btn.onclick = () => speakText(text);
+
+            msgDiv.appendChild(btn);
+
+            // OPTIONAL: Auto-speak immediately - will set for Blind people
+            // speakText(text);
+
         } else {
             msgDiv.innerText = text;
         }
@@ -80,26 +96,51 @@ function appendMessage(text, sender) {
     chatBox.appendChild(msgDiv);
     scrollToBottom();
 }
+function speakText(text) {
+    window.speechSynthesis.cancel();
 
-// ... (Keep sendMessage, renderInteractiveQuiz, and other functions as they are) ...
+    // Create a temporary div to strip HTML tags
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = marked.parse(text); // Ensure markdown is parsed first
+    const cleanText = tempDiv.innerText;
 
-// --- ADD THIS AT THE VERY BOTTOM OF script.js ---
+    const utterance = new SpeechSynthesisUtterance(cleanText);
 
+    // TWEAK 1: Speed and Pitch for natural flow
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+
+    // TWEAK 2: Find the "Premium" Browser Voice
+    const voices = window.speechSynthesis.getVoices();
+
+    // Priority List: Look for "Google", then "Premium", then "Samantha" (Mac)
+    const preferredVoice = voices.find(v =>
+        v.name.includes("Google US English") ||
+        v.name.includes("Samantha") ||
+        v.name.includes("Natural")
+    );
+
+    if (preferredVoice) {
+        utterance.voice = preferredVoice;
+        console.log("Using Voice:", preferredVoice.name); // Check console to see what it picked
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
 // This function fixes the history when you reload the page
 window.onload = function() {
-    // 1. Scroll to bottom
+    // Scroll to bottom
     scrollToBottom();
 
-    // 2. Parse Markdown for existing history messages
+    // Parse Markdown for existing history messages
     const botMessages = document.querySelectorAll('.message.bot');
 
     botMessages.forEach(msg => {
-        // Check if this is a quiz bubble or just text
         if (msg.classList.contains('quiz-bubble') || msg.querySelector('button')) {
             return; // Skip quizzes
         }
 
-        // If it contains the raw QUIZ tag, we need to render it as a quiz
+        // If it contains the raw QUIZ tag, render it as a quiz
         if (msg.innerText.includes("[QUIZ_DATA]")) {
             const rawText = msg.innerText;
             msg.innerText = ""; // Clear raw text
@@ -110,8 +151,6 @@ window.onload = function() {
         }
         // Otherwise, it's a text message -> Convert Markdown to HTML
         else {
-            // marked.parse expects a string, so we grab innerText
-            // We only do this if it doesn't already look like HTML (check for <p>)
             if (!msg.innerHTML.includes("<p>")) {
                 msg.innerHTML = marked.parse(msg.innerText);
             }
@@ -164,7 +203,7 @@ async function sendMessage() {
     }
 }
 
-// --- 4. Quiz Logic (Session & Rendering) ---
+// --- Quiz Logic (Session & Rendering) ---
 
 function startQuiz() {
     document.getElementById('quiz-modal').style.display = 'flex';
@@ -265,7 +304,7 @@ async function startCustomQuiz() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 course_id: courseId,
-                custom_topic: topic // <--- ADD THIS
+                custom_topic: topic // ADD THIS
     })
 });
         const data = await res.json();
@@ -331,15 +370,13 @@ function finishQuizSession() {
     alert("🎉 Quiz Complete! Results saved to history.");
 }
 
-// --- 5. SUMMARY LOGIC (NEW) ---
-/* In static/script.js */
-
+// --- SUMMARY LOGIC (NEW) ---
 async function fetchSummary() {
     const courseId = getCourseId();
     const topicInput = document.getElementById('summary-topic');
     const topic = topicInput ? topicInput.value.trim() : "";
 
-    // 1. User Feedback in Chat
+    // User Feedback in Chat
     const loadingId = "loading-" + Date.now();
     const chatBox = document.getElementById("chatBox");
 
@@ -358,10 +395,10 @@ async function fetchSummary() {
         });
         const data = await res.json();
 
-        // 2. Remove Loader
+        // Remove Loader
         document.getElementById(loadingId).remove();
 
-        // 3. Render in Chat (appendMessage will handle the Markdown)
+        // Render in Chat (appendMessage will handle the Markdown)
         appendMessage(data.summary, 'bot');
 
     } catch (e) {
@@ -372,8 +409,8 @@ async function fetchSummary() {
 }
 
 
-// --- 6. UPLOAD LOGIC (FIXED) ---
-// A. Click Upload
+// --- UPLOAD LOGIC ---
+// Click Upload
 async function handleFileSelect(inputElement) {
     const files = inputElement.files;
     if (files.length === 0) return;
@@ -381,7 +418,7 @@ async function handleFileSelect(inputElement) {
     inputElement.value = '';
 }
 
-// B. Drag & Drop
+// Drag & Drop
 const dropzone = document.getElementById('dropzone');
 if(dropzone) {
     dropzone.addEventListener('dragover', (e) => {
@@ -399,9 +436,7 @@ if(dropzone) {
     });
 }
 
-// C. The Upload Processor (Restored!)
-/* Inside static/script.js */
-
+// The Upload Processor
 async function processUploadQueue(files) {
     const courseId = getCourseId();
     const formData = new FormData();
@@ -409,8 +444,6 @@ async function processUploadQueue(files) {
     files.forEach(file => formData.append('file', file));
 
     const statusDiv = document.getElementById('uploadStatus');
-
-    // NEW: Better visual feedback
     statusDiv.innerHTML = `
         <div style="display:flex; align-items:center; color:#666; font-size:13px;">
             <div class="spinner"></div> 
@@ -422,7 +455,7 @@ async function processUploadQueue(files) {
         const response = await fetch('/api/upload', { method: 'POST', body: formData });
         const data = await response.json();
 
-        statusDiv.innerHTML = ""; // Clear loader
+        statusDiv.innerHTML = "";
 
         if (response.ok) {
             const listContainer = document.getElementById('fileList');
@@ -490,28 +523,21 @@ async function renameNote(id, oldName) {
 
 window.onload = scrollToBottom;
 
-/* --- ADD OR REPLACE AT THE BOTTOM OF static/script.js --- */
 
 window.onload = function() {
-    // 1. Scroll to the bottom of the chat
     scrollToBottom();
 
-    // 2. Loop through all BOT messages to format them
     const botMessages = document.querySelectorAll('.message.bot');
 
     botMessages.forEach(msg => {
-        // A. Skip if it's already a rendered quiz or a spinner
         if (msg.querySelector('button') || msg.querySelector('.spinner')) {
             return;
         }
 
         const rawText = msg.innerText;
-
-        // B. Check for QUIZ DATA (Restores the interactive buttons)
         if (rawText.includes("[QUIZ_DATA]")) {
-            msg.innerText = ""; // Clear the ugly raw text
+            msg.innerText = "";
             try {
-                // Extract JSON and Render
                 const jsonString = rawText.replace("[QUIZ_DATA]", "").trim();
                 const quizJson = JSON.parse(jsonString);
                 renderInteractiveQuiz(quizJson, msg);
@@ -521,11 +547,8 @@ window.onload = function() {
             }
         }
 
-        // C. Check for Standard Text (Apply Markdown formatting)
         else {
-            // We check if it's already HTML to prevent double-parsing
             if (!msg.innerHTML.includes("<p>")) {
-                // Use marked.parse to turn **Bold** into <b>Bold</b>
                 msg.innerHTML = marked.parse(rawText);
             }
         }
@@ -533,9 +556,9 @@ window.onload = function() {
 };
 
 
-/* --- AUDIO FEATURES (STT & TTS) --- */
+/* --- AUDIO FEATURES ->Still needs some adjustments  --- */
 
-// A. SPEECH TO TEXT (User Voice)
+//  SPEECH TO TEXT (User Voice)
 let recognition;
 if ('webkitSpeechRecognition' in window) {
     recognition = new webkitSpeechRecognition();
@@ -566,19 +589,8 @@ function toggleRecording() {
     else alert("Your browser does not support voice input. Try Chrome/Edge.");
 }
 
-// B. TEXT TO SPEECH (Bot Voice) - Add this to your existing appendMessage function
-function speakText(text) {
-    // Strip Markdown/HTML tags for clean reading
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = text;
-    const cleanText = tempDiv.innerText;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.1; // Slightly faster for natural feel
-    speechSynthesis.speak(utterance);
-}
 
-/* In static/script.js - Add this new function */
 
 async function loadStats() {
     const courseId = getCourseId();

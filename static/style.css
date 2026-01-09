@@ -1,6 +1,6 @@
 /* FILE: static/style.css */
 
-/* --- 1. GLOBAL RESET & BODY --- */
+/* --- GLOBAL RESET & BODY --- */
 * {
     margin: 0;
     padding: 0;
@@ -12,10 +12,10 @@ body {
     display: flex;
     height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    overflow: hidden; /* Chat app default: no scroll on body */
+    overflow: hidden;
 }
 
-/* --- 2. SIDEBAR STRUCTURE --- */
+/* --- SIDEBAR STRUCTURE --- */
 .sidebar {
     width: 340px;
     background: rgba(255, 255, 255, 0.95);
@@ -54,7 +54,7 @@ body {
     margin-bottom: 15px;
 }
 
-/* --- 3. UPLOAD SECTION (New Dropzone) --- */
+/* --- UPLOAD SECTION --- */
 .upload-section {
     margin-bottom: 10px;
 }
@@ -103,9 +103,9 @@ body {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    opacity: 0; /* Make invisible */
+    opacity: 0;
     cursor: pointer;
-    z-index: 10; /* Sit on top */
+    z-index: 10;
 }
 
 /* --- 4. LIBRARY / FILE LIST --- */
@@ -173,7 +173,7 @@ body {
 .file-actions button:hover { transform: scale(1.1); }
 .delete-btn:hover { color: red; }
 
-/* --- 5. TABS & CONTENT --- */
+/* --- TABS & CONTENT --- */
 .tab-nav {
     display: flex;
     justify-content: space-between;
@@ -280,7 +280,7 @@ body {
     border-radius: 10px;
 }
 
-/* --- 6. CHAT AREA --- */
+/* --- CHAT AREA --- */
 .chat-container {
     flex: 1;
     display: flex;
@@ -336,8 +336,6 @@ body {
     border: 1px solid #eee;
 }
 
-/* FILE: static/style.css */
-
 /* --- MARKDOWN STYLES --- */
 .message.bot ul, .message.bot ol {
     margin-left: 20px;
@@ -351,7 +349,7 @@ body {
 
 .message.bot strong {
     font-weight: 700;
-    color: #2d3748; /* Slightly darker for emphasis */
+    color: #2d3748;
 }
 
 .message.bot p {
@@ -396,7 +394,7 @@ button {
 }
 button:hover { transform: translateY(-2px); }
 
-/* --- 7. USER FOOTER --- */
+/* --- USER FOOTER --- */
 .user-footer {
     margin-top: auto;
     padding-top: 20px;
@@ -438,7 +436,7 @@ button:hover { transform: translateY(-2px); }
 
 .logout-btn:hover { background: #d32f2f; color: white; }
 
-/* --- 8. MODAL STYLES (Quiz) --- */
+/* --- MODAL STYLES (Quiz) --- */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.5); z-index: 1000;
@@ -480,7 +478,7 @@ input:checked + .diff-btn.hard { background: #f8d7da; border-color: #dc3545; col
 .cancel-btn { background: #f1f3f4; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
 .cancel-btn:hover { background: #e2e6ea; }
 
-/* --- 9. RESPONSIVE --- */
+/* --- RESPONSIVE --- */
 @media (max-width: 768px) {
     body { flex-direction: column; overflow: auto; }
     .sidebar { width: 100%; height: auto; min-height: 40vh; }
