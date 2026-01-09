@@ -33,7 +33,7 @@
 
 ---
 
-## ⚙️ Installation Guide for Teammates
+## ⚙️ Installation Guide
 
 Follow these steps to set up the project locally.
 
