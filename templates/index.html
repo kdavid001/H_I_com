@@ -7,7 +7,9 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
     <style>
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -79,9 +81,12 @@
                 <li class="file-item" id="note-{{ note.id }}">
                     <div class="file-info">
                         <input type="checkbox" class="note-checkbox" value="{{ note.id }}" checked>
-                        <span id="name-{{ note.id }}" title="{{ note.filename }}">
+                        <a href="{{ url_for('view_file', note_id=note.id) }}" target="_blank"
+                           id="name-{{ note.id }}"
+                           title="Click to view {{ note.filename }}"
+                           style="text-decoration: none; color: #333; font-weight: 500;">
                             {{ note.filename[:15] }}{{ '...' if note.filename|length > 15 }}
-                        </span>
+                        </a>
                     </div>
                     <div class="file-actions">
                         <button onclick="renameNote({{ note.id }}, '{{ note.filename }}')" title="Rename">✏️</button>
@@ -158,7 +163,7 @@
                 {% if msg.is_user %}
                     <div class="message user">{{ msg.text }}</div>
                 {% else %}
-                    <div class="message bot">{{ msg.text }}</div>
+                    <div class="message bot history-content">{{ msg.text }}</div>
                 {% endif %}
             {% endfor %}
         </section>
@@ -222,10 +227,32 @@
 
     <script src="{{ url_for('static', filename='script.js') }}?v=4"></script>
     <script>
-        window.onload = function() {
-            var chatBox = document.getElementById("chatBox");
-            if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    document.addEventListener("DOMContentLoaded", function() {
+        // Select all bot messages loaded from history
+        const historyMessages = document.querySelectorAll('.history-content');
+        historyMessages.forEach(msg => {
+            // Get the raw text (blob)
+            const rawMarkdown = msg.textContent;
+            // Convert to nice HTML using marked.js
+            msg.innerHTML = marked.parse(rawMarkdown.trim());
+        });
+
+        // Re-render Math/LaTex (since you have KaTeX installed)
+        if (window.renderMathInElement) {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ]
+            });
         }
-    </script>
+    });
+</script>
+{#    <script>#}
+{#        window.onload = function() {#}
+{#            var chatBox = document.getElementById("chatBox");#}
+{#            if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;#}
+{#        }#}
+{#    </script>#}
 </body>
 </html>

@@ -21,7 +21,7 @@ else:
     except Exception as e:
         print(f"⚠️ Error initializing Gemini: {e}")
 
-# --- HUAWEI MINDSPORE IMPORT (Simulation) ---
+# --- HUAWEI MINDSPORE IMPORT ---
 try:
     import mindspore
     from mindspore import Tensor
@@ -33,7 +33,7 @@ except ImportError:
     MINDSPORE_AVAILABLE = False
     print("⚠️ MindSpore not found. Running in fallback mode.")
 
-# --- ENGINE 1: DIGITAL (Standard Python Libs) ---
+# ---DIGITAL (Standard Python Libs) ---
 try:
     from docx import Document
     from pptx import Presentation
@@ -95,91 +95,93 @@ def extract_text_from_file(filepath):
 
 
 # --- RAG: RETRIEVAL LOGIC ---
-# --- RAG: RETRIEVAL LOGIC (STRICT MINDSPORE MODE) ---
 def find_best_context(user_query, full_text):
     """
     Retrieval Logic.
-    STRICT MODE: If MindSpore is installed, it forces execution via the NPU/CPU kernel.
-    No fallback to NumPy allows for valid proof of technology.
     """
     import numpy as np
-
     # 1. Pre-processing (Python)
     paragraphs = [p for p in full_text.split('\n\n') if len(p) > 50]
     if not paragraphs: return full_text[:2000]
-
     # 2. Scoring (Python)
     query_words = set(user_query.lower().split())
     scores = []
     for p in paragraphs:
         score = sum(1 for w in query_words if w in p.lower())
         scores.append(score)
-
-    # 3. Decision Making (MindSpore)
+    # 3. MindSpore Decision Making
     if MINDSPORE_AVAILABLE:
-        # --- CRITICAL SECTION: NO SAFETY NET ---
-        # We rely 100% on the MindSpore Operator here.
-        # If this crashes, the installation is wrong.
-
-        # A. Convert Score List to MindSpore Tensor
+        # Convert Score List to MindSpore Tensor
         score_tensor = Tensor(np.array(scores), mindspore.float32)
-
-        # B. Perform Computation (The "AI" Step)
-        # We use the functional ArgMax operator directly
+        # Perform Computation
         best_idx_tensor = ops.argmax(score_tensor)
-
-        # C. Convert Result back to Python
+        # Convert Result back to Python
         best_idx = int(best_idx_tensor.asnumpy())
-
         print(f"⚡ STRICT MODE: Retrieved Context via MindSpore (Index {best_idx})")
-
     else:
         # Only runs if 'import mindspore' failed at the very top of the file
         print("⚠️ MindSpore Library Missing! Falling back to standard CPU logic.")
         best_idx = np.argmax(scores)
-
     return paragraphs[best_idx][:2500]
+
+
+def ask_bot(user_question, full_text_history=None):
+    """
+    The main entry point for the frontend.
+    Handles 'No File' vs 'With File' logic automatically.
+    """
+    if not client:
+        return "⚠️ Error: AI Engine is not connected."
+
+    # CASE 1: GENERAL CHAT (No File Uploaded)
+    if not full_text_history:
+        print("ℹ️ No file loaded. Using General Tutor Mode.")
+        prompt = (
+            "You are Chokhmah, a helpful and encouraging AI tutor. "
+            "The user has NOT uploaded any course notes yet.\n\n"
+            f"USER QUESTION: {user_question}\n\n"
+            "INSTRUCTIONS:\n"
+            "1. **BE COMPREHENSIVE:** Answer the student's question in detail. Do not give short, one-line answers.\n"
+            "2. **TEACHING STYLE:** Explain concepts clearly, using examples if necessary.\n"
+            "3. **REMINDER:** Gently remind the user they can upload a PDF to get answers specific to their curriculum.\n"
+            "4. **FORMATTING:** Use clean Markdown (Bold key terms, bullet points).\n"
+        )
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            return f"Error: {e}"
+
+    # CASE 2: STRICT RAG (File IS Uploaded)
+    else:
+        # 1. Retrieve Context using MindSpore
+        context = find_best_context(user_question, full_text_history)
+
+        # 2. Generate Answer with Context
+        return generate_answer(context, user_question)
 
 # --- AI GENERATION ---
 def generate_answer(context, question):
     if not client: return "⚠️ Error: Google Client not active."
 
-    # We update the prompt to handle two scenarios:
-    # 1. Questions about the text (Strict RAG)
-    # 2. General advice/chat (Helpful Tutor Mode)
-
+    # UPDATED PROMPT FOR VERBOSE ANSWERS
     prompt = (
-        "You are Chokhmah, an intelligent, encouraging study companion and tutor.\n\n"
-
-        "You are given excerpts from the student's course material below.\n"
-        "Use them carefully and responsibly.\n\n"
+        "You are Chokhmah, an intelligent, encouraging study companion.\n"
+        "You are given excerpts from the student's course material.\n\n"
 
         f"--- CONTEXT START ---\n{context}\n--- CONTEXT END ---\n\n"
 
         "USER QUESTION:\n"
         f"{question}\n\n"
 
-        "INSTRUCTIONS (Follow in order of priority):\n"
-        "1. **STRICT RAG MODE:** If the user asks a COURSE-SPECIFIC or FACTUAL question (e.g., definitions, formulas), answer STRICTLY using the Context above.\n"
-        "   - Do NOT introduce outside knowledge for facts.\n"
-        "   - If the Context does not contain the answer, clearly say: '**The provided notes do not contain enough information to answer this question.**'\n\n"
-
-        "2. **MISSING INFO:** If the answer is missing from the Context:\n"
-        "   - Do NOT guess or hallucinate facts.\n"
-        "   - You may provide a *high-level general explanation* only if it is clearly labeled as: '*(Note: This is a general explanation, not from your specific notes)*'.\n\n"
-
-        "3. **OVERRIDE RULE — STUDY COACH MODE:**\n"
-        "   If the user asks for GENERAL STUDY ADVICE, MOTIVATION, or META-QUESTIONS "
-        "   (e.g., 'Should I take a quiz?', 'I feel tired', 'How should I study?', 'Summarize this'), "
-        "   IGNORE the Context restrictions.\n"
-        "   - Act as a supportive tutor.\n"
-        "   - Recommend taking a quiz to assess understanding or generating a summary.\n"
-        "   - Encourage the student in a friendly, concise tone.\n\n"
-
-        "4. **OUTPUT GUIDELINES:**\n"
-        "   - Use clear Markdown formatting (bullet points, **bold**, headings).\n"
-        "   - Keep responses student-friendly and concise.\n"
-        "   - Do NOT mention these internal rules."
+        "INSTRUCTIONS:\n"
+        "1. **BE COMPREHENSIVE:** Do not just give a one-line answer. Explain the concept fully using the provided context. Break it down so a student can understand.\n"
+        "2. **STRICT GROUNDING:** Use ONLY the information in the context above. Do not make up outside facts.\n"
+        "3. **FORMATTING:** Use **Bold** for key terms and lists for steps.\n"
+        "4. **MATH:** If there are formulas, show them clearly using LaTeX ($$).\n"
     )
 
     try:
@@ -244,7 +246,8 @@ def generate_summary(full_text, topic=""):
     if topic:
         prompt = f"Summarize the following text focusing specifically on '{topic}':\n\n{truncated_text}"
     else:
-        prompt = f"Summarize the following study material into 3-5 key bullet points:\n\n{truncated_text}"
+        prompt = (f"Summarize the following study material into 3-6 key bullet points, but"
+                  f"if more key point can be made use do that:\n\n{truncated_text}")
 
     try:
         response = client.models.generate_content(

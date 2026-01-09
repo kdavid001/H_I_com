@@ -4,11 +4,12 @@ from flask import Flask, jsonify, request, render_template, session, redirect, u
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Note, ChatMessage, Course, QuizResult, QuizSession
-from ai_engine import (find_best_context, generate_answer, generate_quiz_question, extract_text_from_file,
-                       generate_summary)
+from ai_engine import (generate_quiz_question, extract_text_from_file,
+                       generate_summary, ask_bot)
 from sqlalchemy import func
 
 app = Flask(__name__)
+global_pdf_text = ""
 
 # --- CONFIGURATION ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
@@ -70,6 +71,17 @@ def logout():
     return redirect(url_for('login'))
 
 
+
+@app.route('/ask', methods=['POST'])
+def ask():
+    user_data = request.json
+    question = user_data.get('question')
+
+    # It handles "No File" and "MindSpore Search" automatically.
+    answer = ask_bot(question, global_pdf_text)
+
+    return jsonify({"answer": answer})
+
 # --- MAIN APP ROUTES ---
 @app.route('/')
 def home():
@@ -118,7 +130,8 @@ def upload_file():
 
         # Extract Text
         extracted_text = extract_text_from_file(save_path)
-
+        global global_pdf_text
+        global_pdf_text += extracted_text + "\n"
         new_note = Note(
             filename=filename,
             extracted_text=extracted_text,
@@ -177,7 +190,8 @@ def upload_ocr_file():
 
         # ENGINE 2: Optical (MindSpore)
         text = extract_text_from_file(save_path)
-
+        global global_pdf_text
+        global_pdf_text += text + "\n"
         new_note = Note(filename=filename, extracted_text=text, course_id=course_id)
         db.session.add(new_note)
         db.session.commit()
@@ -200,11 +214,11 @@ def chat():
     difficulty = data.get('difficulty', 'Medium')
     custom_topic = data.get('custom_topic', '')
 
-    # Save User Message.
+    # 1. Save User Message
     msg = ChatMessage(text=user_message, is_user=True, course_id=course_id)
     db.session.add(msg)
 
-    # Gather Text Context
+    # 2. Gather Text Context
     query = Note.query.filter_by(course_id=course_id)
     if selected_note_ids:
         query = query.filter(Note.id.in_(selected_note_ids))
@@ -212,37 +226,31 @@ def chat():
 
     full_text = " ".join([n.extracted_text for n in course_notes if n.extracted_text])
 
-    if not full_text.strip():
-        return jsonify({"response": "⚠️ No notes found. Please upload a PDF first."})
-
-    # --- BRANCH 1: QUIZ MODE ---
+    # 3. CHECK: QUIZ MODE
     if user_message.lower().strip() == "/quiz" or "quiz me" in user_message.lower():
+        if not full_text.strip():
+            return jsonify({"response": "⚠️ Please upload notes before starting a quiz.", "is_quiz": False})
 
-        # Call AI Engine with Difficulty AND Custom Topic
         quiz_data = generate_quiz_question(full_text, difficulty, custom_topic)
-
         if quiz_data:
-            return jsonify({
-                "response": quiz_data,
-                "is_quiz": True
-            })
+            return jsonify({"response": quiz_data, "is_quiz": True})
         else:
-            return jsonify({"response": "⚠️ AI could not generate a quiz. Try selecting more notes.", "is_quiz": False})
+            return jsonify({"response": "⚠️ AI could not generate a quiz.", "is_quiz": False})
 
-    # --- BRANCH 2: NORMAL CHAT ---
-    else:
-        # RAG Search (MindSpore)
-        context = find_best_context(user_message, full_text)
+    # 4. NORMAL CHAT (Unified Logic)
+    # We use ask_bot from ai_engine because it ALREADY handles "No File" vs "With File" logic
+    try:
+        # If full_text is empty, ask_bot will automatically treat it as General Chat
+        response_text = ask_bot(user_message, full_text_history=full_text)
+    except Exception as e:
+        response_text = f"System Error: {str(e)}"
 
-        # Generation (Uses Gemini API for now will switch to MindsporeLLM for the Phase 2)
-        response_text = generate_answer(context, user_message)
+    # 5. Save AI Response
+    ai_msg = ChatMessage(text=response_text, is_user=False, course_id=course_id)
+    db.session.add(ai_msg)
+    db.session.commit()
 
-        # Save History (Normal chat should be saved)
-        ai_msg = ChatMessage(text=response_text, is_user=False, course_id=course_id)
-        db.session.add(ai_msg)
-        db.session.commit()
-
-        return jsonify({"response": response_text, "is_quiz": False})
+    return jsonify({"response": response_text, "is_quiz": False})
 
 
 # --- NEW ROUTE: START QUIZ SESSION ---
