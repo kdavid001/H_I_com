@@ -1,4 +1,4 @@
-# 🧠 Chokhmah AI | Huawei ICT Competition 2025-2026
+# Chokhmah AI | Huawei ICT Competition 2025-2026
 ### *Personalized Learning Intelligence (PLI) Platform*
 
 ![Huawei MindSpore](https://img.shields.io/badge/Powered%20By-Huawei%20MindSpore-c0392b?style=for-the-badge&logo=huawei)
@@ -9,19 +9,19 @@
 
 ---
 
-## 🚀 Key Features (Phase 1)
+## Key Features (Phase 1)
 
-* **📚 Intelligent Ingestion:** Drag-and-drop support for **PDF, Word (.docx), and PowerPoint (.pptx)**.
-* **🧠 Hybrid RAG Architecture:** Uses local tensor processing (MindSpore-inspired) for data retrieval + Cloud AI for generation.
-* **🎯 Targeted Summaries:** Generate full course overviews or ask for specific topics (e.g., *"Summarize only Chapter 3 formulas"*).
-* **📊 Heuristic Adaptive Quizzing:**
+* **Intelligent Ingestion:** Drag-and-drop support for **PDF, Word (.docx), and PowerPoint (.pptx)**.
+* **Hybrid RAG Architecture:** Uses local tensor processing (MindSpore-inspired) for data retrieval + Cloud AI for generation.
+* **Targeted Summaries:** Generate full course overviews or ask for specific topics (e.g., *"Summarize only Chapter 3 formulas"*).
+* **Heuristic Adaptive Quizzing:**
     * Tracks performance per topic (e.g., "Vectors" vs. "Calculus").
     * Automatically detects "Knowledge Gaps" and recommends specific study actions.
-* **♿ Accessibility First:** Built-in **Text-to-Speech** (Read Aloud) and **Voice Input** for hands-free studying.
+* **Accessibility First:** Built-in **Text-to-Speech** (Read Aloud) and **Voice Input** for hands-free studying.
 
 ---
 
-## 🛠️ Tech Stack & Huawei Integration
+## Tech Stack & Huawei Integration
 
 | Component | Technology Used | Role in Chokhmah |
 | :--- | :--- | :--- |
@@ -33,7 +33,7 @@
 
 ---
 
-## ⚙️ Installation Guide
+## Installation Guide
 
 Follow these steps to set up the project locally.
 
@@ -68,7 +68,7 @@ source venv/bin/activate
 
 **⚠️ IMPORTANT: Choose your OS below**
 
-#### 🪟 For Windows Users (Python 3.9)
+#### For Windows Users (Python 3.9)
 
 Run this command first to install MindSpore (CPU Version) correctly:
 
@@ -84,7 +84,7 @@ pip install -r requirements.txt
 
 ```
 
-#### 🍎 For Mac (Apple Silicon) Users
+#### For Mac (Apple Silicon) Users
 
 The `requirements.txt` is already set up for you. Just run:
 
@@ -133,7 +133,7 @@ Open your browser and go to: `http://127.0.0.1:5000`
 
 ---
 
-## 🔮 Future Roadmap (Phase 2)
+## Future Roadmap (Phase 2)
 
 * [ ] **Deep Reinforcement Learning:** Replace heuristic rules with an RL Agent trained via **MindSpore RL**.
 * [ ] **OCR Integration:** Use **MindSpore OCR** to read handwritten notes.
