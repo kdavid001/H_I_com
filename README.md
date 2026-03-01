@@ -1,9 +1,10 @@
 # Chokhmah AI | Huawei ICT Competition 2025-2026
 ### *Personalized Learning Intelligence (PLI) Platform*
 
+![Award](https://img.shields.io/badge/Award-2nd%20Place%20National%20(Nigeria)-C0C0C0?style=for-the-badge&logo=huawei)
 ![Huawei MindSpore](https://img.shields.io/badge/Powered%20By-Huawei%20MindSpore-c0392b?style=for-the-badge&logo=huawei)
 ![Python Flask](https://img.shields.io/badge/Backend-Flask-000000?style=for-the-badge&logo=flask)
-![Status](https://img.shields.io/badge/Phase-1%20Prototype-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Phase%201%20Completed-success?style=for-the-badge)
 
 **Chokhmah AI** is an adaptive study companion designed to solve the "Cold Start" problem in education. Unlike traditional tools that require weeks to learn a student's habits, Chokhmah uses **Retrieval-Augmented Imitation Learning** to instantly "imitate" the expert logic found in uploaded course materials, providing immediate, grounded tutoring.
 
